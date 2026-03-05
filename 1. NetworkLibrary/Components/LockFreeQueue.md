@@ -4,6 +4,7 @@
 - 한 문장 설명
 - 해결하는 문제
 - 핵심 가치
+- [노드 풀 상세 문서](1.%20NetworkLibrary/Components/TLSMemoryPool.md)
 
 ## 2. 왜 필요한가? (Motivation)
 - 기존 방식의 문제점
@@ -41,3 +42,4 @@
 - 적합한 사용 케이스
 
 ## 9. 향후 개선 방향 (Future Improvements)
+
