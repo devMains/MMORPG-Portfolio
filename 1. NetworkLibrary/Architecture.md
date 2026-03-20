@@ -1,77 +1,68 @@
 # [라이브러리 이름] 아키텍처 문서
 
 ## 1. 문서 개요 (Document Overview)
-   - 이 문서의 목적
-   - 대상 독자
-   - 전제 지식
+   - 대상 독자 : 라이브러리 사용자를 대상으로 어떤 메커니즘으로 작동되는지 설명하는 문서
+   - 전제 지식 : C/C++ 기본 지식, 멀티스레드에 대한 이해
 
 ## 2. 아키텍처 철학 (Architecture Philosophy)
-   - 설계 원칙 (3-5개)
-   - 핵심 가치 (성능/확장성/안정성)
-   - 트레이드오프 결정
+   - 설계 원칙 : 리소스 재사용과 풀 기반 메모리 관리, 안정성과 정확성
+   - 핵심 가치 (성능/확장성/안정성) : 안정성과 정확성(장시간 작동 시 크래시, 메모리 누수 없이 작동)
+   - 트레이드오프 결정 : IOCP(Windows 게임 서버를 목표로 설계), 세션의 락 프리 관리(멀티스레드 환경에서 동기화 학습을 위함), 맞춤형 프로토콜 버퍼(자체적인 프로토콜 이용, 상용 엔진의 네트워크 의존 거부)
 
 ## 3. 전체 시스템 구조 (System Overview)
    ### 3.1 레이어 아키텍처
-      ```
       ┌─────────────────────────────┐
-      │   Application Layer         │  ← 사용자 코드
+      │   Application Layer         │
       ├─────────────────────────────┤
-      │   Network Library API       │  ← 공개 인터페이스
+      │   Network Library API       │
+      |   - virtual function        |
+      |   - SendPacket              |
+      |   - Disconnect              | 
       ├─────────────────────────────┤
-      │   Core Components           │  ← 내부 구현
-      │   - Session Manager         │
-      │   - Packet Processor        │
-      │   - Memory Manager          │
+      │   Core Components           │
+      │   - Protocol Parse          │
+      │   - Packet Process          │
+      │   - Accept / Disconnect     │
       ├─────────────────────────────┤
-      │   I/O Layer (IOCP/epoll)   │  ← OS 레벨
+      │   I/O Layer (IOCP)          │
       └─────────────────────────────┘
-      ```
    
    ### 3.2 컴포넌트 관계도
       - 주요 컴포넌트 간 의존성
       - 데이터 흐름
    
    ### 3.3 책임 분리
-      - 각 레이어의 역할
-      - 인터페이스 경계
+   - Application Layer : 네트워크 라이브러리를 가져다 쓰는 실제 서버의 로직을 담당. 하위 통신이나 스레드 관리의 복잡성을 몰라도 되며, 전달받은 패킷을 처리하고 응답을 전송한다.
+   - Network Library Layer : 사용자가 오버라이딩 할 수 있는 이벤트 콜백과 서버 설정, 시작/종료 함수를 제공. 라이브러리 내부의 복잡한 구현을 캡슐화를 통해 숨긴다.
+   - Core Components Layer : 데이터를 논리적인 패킷 단위로 만들고 메모리를 관리. 
+   - I/O Layer : Windows의 IOCP를 이용하여 Accept 스레드와 다수의 Worker 스레드를 구동하여 이벤트를 감지하고 Core Layer로 알림.
 
 ## 4. 스레드 아키텍처 (Thread Architecture)
    ### 4.1 스레드 모델
-      ```
       Main Thread
          ↓
-      Accept Thread ──→ 새 연결 수락
+      Accept Thread -> 새 연결 수락
          ↓
       IOCP Worker Pool (N개)
-         ├─ Worker 1 ──→ Send/Recv 처리
-         ├─ Worker 2
+         ├─ Worker 1 -> Send/Recv 처리, Packet Parse, 이벤트 콜백 호출(OnConnect, OnDisconnect, OnRecv)
+         ├─ Worker 2 
          ├─ Worker 3
          └─ Worker N
+      -----------------------------------------
+      Content Thread
+         ↓   SendPacket()
+      Session Message Queue Enqueue
          ↓
-      Logic Thread Pool (M개)
-         ├─ Logic 1 ──→ 패킷 처리 로직
-         ├─ Logic 2
-         └─ Logic M
-      ```
-   
-   ### 4.2 스레드 개수 결정
-      - CPU 코어 수 기반 공식
-      - 워커 스레드: 코어 수 * 2
-      - 로직 스레드: 코어 수
-   
-   ### 4.3 스레드 간 통신
-      - Lock-Free Queue 사용
-      - Event 기반 알림
-      - 데이터 공유 최소화
+      IOCP Worker Thread Send
+      -----------------------------------------
+      Content Thread
+         ↓ Disconnect()
+      CancelIo, Disconnect Flag On
+         ↓
+      IOCP Worker Thread Check -> ReleaseSession()
 
 ## 5. 네트워크 I/O 아키텍처 (Network I/O Architecture)
-   ### 5.1 IOCP 구조 (Windows)
-      - Completion Port 생성
-      - Overlapped I/O 구조
-      - GetQueuedCompletionStatus 흐름
-   
-   ### 5.2 비동기 I/O 흐름
-      ```
+   ### 5.1 비동기 I/O 흐름
       Client 연결
          ↓
       Accept 완료 → IOCP에 알림
@@ -82,227 +73,136 @@
          ↓
       Recv 완료 처리 → 패킷 파싱
          ↓
-      Logic Thread로 전달
-      ```
+      OnRecv 호출
    
-   ### 5.3 Send/Recv 버퍼 관리
-      - Overlapped 구조체와 버퍼 연결
-      - Zero-Copy 전략
+   ### 5.2 Send/Recv 버퍼 관리
+   - RingBuffer의 모든 공간 활용 : WSARecv에 모든 버퍼 공간을 등록
+   - Overlapped 구조체와 버퍼 연결 : Send 완료 처리 시 직렬화 버퍼 풀 반환
 
 ## 6. 세션 관리 (Session Management)
    ### 6.1 세션 생명주기
-      ```
-      생성 → 연결 → 활성 → 종료 대기 → 삭제
-      ```
+      생성 → 연결 → 활성 → 종료 대기(종료 플래그) → 삭제(IoCount = 0)
    
    ### 6.2 세션 구조
-      ```cpp
-      class Session {
-          SessionID _id;
+      struct OVERLAPPEDEX {
+         OVERLAPPED overlapped;
+         CSerializedBuffer* buffer[MAX_BUFFER_COUNT];
+         int bufferCount;
+      }
+      
+      struct Session {
           SOCKET _socket;
-          RingBuffer _recvBuffer;
-          LockFreeQueue<Packet*> _sendQueue;
-          atomic<SessionState> _state;
+          OVERLAPPED recvOverlapped;
+          OVERLAPPEDEX sendOverlapped;
+          RingBuffer _recvQ;
+          LockFreeQueue<Packet*> _sendQ;
+          WSABUF[2] _recvBuf;
+          unsigned long long _id;
+          long _sendFlag;
+          long _disconnected;
+          long _ioCount;
       };
-      ```
    
    ### 6.3 세션 풀
-      - 미리 할당된 세션 재사용
-      - 메모리 파편화 방지
+   - 세션 배열(락 프리 세션 관리 시 자료구조의 변경 불가) 접근을 위한 인덱스 풀
    
    ### 6.4 동시성 제어
-      - 세션별 참조 카운팅
-      - 안전한 세션 접근
+   - 세션별 참조 카운팅 : 사용 중인 세션의 종료를 금지, 종료 시 Recv를 걸지 않음으로 ioCount를 0으로 유도하는 방식 이용
+   - Recv/Send 동시 1회 제한 : Overlapped 구조체 관리 불편, Recv의 메시지 직렬화 보장
 
 ## 7. 패킷 처리 아키텍처 (Packet Processing)
    ### 7.1 패킷 구조
-      ```
-      [Header: 4bytes] [Body: N bytes]
+      [Header: 5bytes] [Body: N bytes]
+      ├─ Code: 1byte
       ├─ Size: 2bytes
-      ├─ Type: 2bytes
+      ├─ Random Key : 1byte
+      ├─ CheckSum : 1byte
       └─ Payload: N bytes
-      ```
    
    ### 7.2 패킷 처리 파이프라인
-      ```
-      수신 → 링버퍼 저장 → 패킷 경계 감지 → 역직렬화 → 처리 → 응답 직렬화 → 송신 큐
-      ```
+   - 수신 → 링버퍼 저장 → 패킷 경계 감지 → 역직렬화 및 복호화(Random Key + Constant Key) → 처리 → 응답 직렬화/OnRecv 호출
    
-   ### 7.3 패킷 라우팅
-      - PacketType별 핸들러 매핑
-      - 함수 포인터 테이블
-
 ## 8. 메모리 관리 아키텍처 (Memory Management)
-   ### 8.1 메모리 할당 전략
-      - 작은 객체: TLS 메모리풀
-      - 큰 객체: 직접 할당
-      - 임계값: 1KB
-   
-   ### 8.2 메모리 풀 계층
-      ```
-      Thread 1 Pool ─┐
-      Thread 2 Pool ─┼─→ Global Reserve Pool
-      Thread N Pool ─┘
-      ```
-   
-   ### 8.3 메모리 재사용
-      - 객체 풀 패턴
-      - Placement New 활용
+   **[메모리 풀 문서 바로가기](1.%20NetworkLibrary/Components/TLSMemoryPool.md)**
 
-## 9. 직렬화 아키텍처 (Serialization Architecture)
-   ### 9.1 직렬화 전략
-      - 포인터 기반 제자리 쓰기
-      - 엔디안 변환 (네트워크 바이트 오더)
-   
-   ### 9.2 직렬화 버퍼 구조
-      ```
-      [─────────────────────────────]
-       ↑                         ↑
-      Start                    WritePos
-      ```
-   
-   ### 9.3 타입별 직렬화
-      - 기본 타입 (int, float)
-      - 문자열 (길이 + 데이터)
-      - 배열 (원소 수 + 원소들)
+## 9. 직렬화 아키텍처 (Serialization Architecture) 
+   **[직렬화 버퍼 문서 바로가기](1.%20NetworkLibrary/Components/SerializedBuffer.md)**
 
 ## 10. 에러 처리 아키텍처 (Error Handling)
    ### 10.1 에러 계층
-      - 네트워크 에러 (연결 끊김)
-      - 프로토콜 에러 (잘못된 패킷)
-      - 논리 에러 (비즈니스 로직)
+   - 초기 설정 에러 (초기 네트워크 설정 에러)
+   - 네트워크 에러 (연결 끊김)
+   - 프로토콜 에러 (잘못된 패킷)
+   - 논리 에러 (비즈니스 로직)
    
    ### 10.2 에러 복구 전략
-      - 연결 에러 → 세션 정리
-      - 패킷 에러 → 무시 + 로그
-      - 크리티컬 에러 → 서버 종료
+   - 초기 설정 에러 -> 서버 종료 + 로그
+   - 연결 에러 -> 세션 정리
+   - 패킷 에러 -> 세션 정리 + 로그
+   - 크리티컬 에러 -> 덤프 생성 + 서버 종료
    
    ### 10.3 로깅
-      - 레벨별 로그 (DEBUG/INFO/WARN/ERROR)
-      - 비동기 로깅 (성능 영향 최소화)
+   - OnError 콜백 함수를 통한 라이브러리 사용자 측 전달
 
 ## 11. 성능 최적화 아키텍처 (Performance Optimization)
    ### 11.1 Lock-Free 설계
-      - 송신 큐: Lock-Free Queue
-      - 메모리 풀: TLS 기반 무잠금
+   - 메모리 풀: TLS 기반 무잠금
    
    ### 11.2 Zero-Copy 최적화
-      - 직렬화: 제자리 쓰기
-      - 수신: 링버퍼 재사용
-   
-   ### 11.3 캐시 최적화
-      - False Sharing 방지 (패딩)
-      - 데이터 지역성 (핫 데이터 집중 배치)
+   - WSASend 콜타임이 긴 경우 사용(On/Off 옵션 제공)
+
+   ### 11.3 컨텐츠 로직 영향 최소화
+   - SendPacket 함수 내부 세션의 _sendQ에 넣고 반환
+   - WSASend의 호출은 IOCP Worker Thread에서 직접 호출
    
    ### 11.4 시스템 콜 최소화
-      - 배치 Send/Recv
-      - Scatter-Gather I/O
+   - 배치 Send/Recv
+   - Scatter-Gather I/O
 
-## 12. 확장성 아키텍처 (Scalability)
-   ### 12.1 수직 확장 (Scale-Up)
-      - 스레드 풀 크기 자동 조정
-      - CPU 코어 활용 극대화
+## 12. 보안 아키텍처 (Security Architecture)
+   ### 12.1 입력 검증
+   - 패킷 크기 제한 : 직렬화 버퍼 크기 제한
+   - 유효성 검사 : 프로토콜 유효성 검사
    
-   ### 12.2 수평 확장 (Scale-Out) 고려사항
-      - 서버 간 통신 프로토콜
-      - 로드 밸런싱 지점
-      - 상태 공유 방법 (Redis)
+   ### 12.2 DoS 방어
+   - Rate Limiting : 한 번에 RingBuffer의 크기만큼만 받도록 하여 처리의 상한선 설정
+   - 연결 수 제한 : 지정 연결 수 이상 연결을 받지 않음
+   
+   ### 12.3 메모리 보안
+   - 버퍼 오버플로우 방지 : 버퍼 크기 체크 메서드를 통한 사용 전 검사
+   - Use-After-Free 방지 : 메시지 참조 카운트를 이용한 메모리 수명 관리
 
-## 13. 보안 아키텍처 (Security Architecture)
-   ### 13.1 입력 검증
-      - 패킷 크기 제한
-      - 유효성 검사
-   
-   ### 13.2 DoS 방어
-      - Rate Limiting
-      - 연결 수 제한
-   
-   ### 13.3 메모리 보안
-      - 버퍼 오버플로우 방지
-      - Use-After-Free 방지
+## 13. 모니터링 아키텍처 (Monitoring)
+   **[모니터링 문서 바로가기](1.%20NetworkLibrary/Components/Monitoring.md)**
 
-## 14. 모니터링 아키텍처 (Monitoring)
-   ### 14.1 성능 메트릭
-      - TPS (Transactions Per Second)
-      - 평균/P99 레이턴시
-      - 활성 세션 수
+## 14. 설계 패턴 (Design Patterns)
+   ### 14.1 사용된 패턴
+   - Singleton: ObjectPoolTLS
+   - Template Method : Callback Functions
+   - Actor : IOCP Worker Thread
    
-   ### 14.2 리소스 모니터링
-      - CPU 사용률
-      - 메모리 사용량
-      - 네트워크 대역폭
+   ### 14.2 패턴 선택 이유
+   - Singleton : 특정 자료형의 풀을 전역으로 하나씩 관리하기 위함
+   - Template Method : 네트워크 라이브러리에서 세션에 대한 이벤트를 알려주어야 함
+   - Actor : 동일한 코드를 가진 IOCP Worker Thread에서 여러 세션을 처리하기 위해 세션에 대한 정보와 메시지를 IOCP Queue에 삽입한다
+
+## 15. 아키텍처 진화 (Architecture Evolution)
+   ### 15.1 초기 설계
+   - 콘텐츠와 계층을 분리하여 콘텐츠에서 요청할 수 있는 SendPacket과 Disconnect 함수 제공
+   - Send/Recv RingBuffer를 활용한 기본적인 IOCP 라이브러리, 세션에 대한 동기화 객체를 이용하여 동기화를 진행
+   - IoCount 기반 세션의 생명 주기 관리
+   - 문제점 : 세션 삭제 시 세션과 같이 있는 동기화 객체도 삭제가 됨. 동기화를 걸고 동기화 객체를 삭제하는 것은 말이 되지 않음.
    
-   ### 14.3 모니터링 인터페이스
-      - 실시간 대시보드
-      - 알람 시스템
-
-## 15. 설계 패턴 (Design Patterns)
-   ### 15.1 사용된 패턴
-      - Singleton: SessionManager
-      - Object Pool: Session, Packet
-      - Observer: Event 시스템
-      - Strategy: 패킷 핸들러
+   ### 15.2 개선
+   - 동기화 객체의 삭제가 문제가 된다면 삭제를 하지 않고, 세션을 재활용하여 해결
+   - 세션 ID 상단의 16비트에 세션 배열의 인덱스를 넣어 탐색 없이 즉시 인덱스를 확인
+   - 멀티스레드 환경의 동기화 학습을 위해 세션 관리를 락 프리 구조로 변경
+     -> 현재 구조에서는 Send, Recv의 완료 통지를 1번씩만 제한하여 경합이 많이 발생하지 않는다. 따라서 실제로는 동기화 객체를 사용하여 관리하는 것이 더 빠를 것이다.
+     -> 세션 배열 구조 이용, 배열 인덱스 기반 세션 재활용, Send RingBuffer를 CSerializedBuffer 타입의 락 프리 큐로 변경, Interlocked 기반 세션 상태 확인 및 적용
+   - 개선 효과 : 세션의 삭제 시 생기는 동기화 문제를 해결
    
-   ### 15.2 패턴 선택 이유
-      - 각 패턴별 적용 배경
-
-## 16. 아키텍처 진화 (Architecture Evolution)
-   ### 16.1 초기 설계 (v0.1)
-      - 단순 동기 I/O
-      - 문제점
+   ### 15.3 현재
+   - 간단한 암호화 제공, Send 시 Zero-Copy 옵션 제공
    
-   ### 16.2 개선 (v0.5)
-      - 비동기 I/O 도입
-      - 개선 효과
-   
-   ### 16.3 현재 (v1.0)
-      - Lock-Free + Zero-Copy
-      - 최종 성과
-   
-   ### 16.4 향후 계획 (v2.0)
-      - 계획 중인 개선 사항
-
-## 17. 플랫폼별 차이 (Platform-Specific)
-   ### 17.1 Windows (IOCP)
-      - IOCP API 사용
-      - Overlapped I/O
-   
-   ### 17.2 Linux (epoll) - 계획
-      - epoll API 매핑
-      - 이벤트 처리 차이
-
-## 18. 제약사항 및 한계 (Constraints & Limitations)
-   ### 18.1 현재 제약
-      - 최대 동시 접속: 10,000명
-      - 패킷 크기 제한: 64KB
-   
-   ### 18.2 알려진 이슈
-      - Windows 전용 (Linux 미지원)
-      - UDP 미지원
-   
-   ### 18.3 해결 계획
-      - 각 제약의 해결 로드맵
-
-## 19. 참고 아키텍처 (Reference Architectures)
-   - Boost.Asio 아키텍처
-   - IOCP 모범 사례 (Microsoft)
-   - Lock-Free 알고리즘 (1024cores)
-
-## 20. 용어 정의 (Glossary)
-   - IOCP: I/O Completion Port
-   - CAS: Compare-And-Swap
-   - TLS: Thread Local Storage
-   - (주요 기술 용어 정리)
-
-## 부록 A: 클래스 다이어그램 (Class Diagram)
-   - UML 다이어그램
-   - 주요 클래스 관계
-
-## 부록 B: 시퀀스 다이어그램 (Sequence Diagram)
-   - 연결 시퀀스
-   - 패킷 송수신 시퀀스
-   - 종료 시퀀스
-
-## 부록 C: 성능 벤치마크 상세 (Performance Details)
-   - 환경별 벤치마크
-   - 병목 지점 분석
+   ### 15.4 향후 계획 (v2.0)
+   - 계획 중인 개선 사항
