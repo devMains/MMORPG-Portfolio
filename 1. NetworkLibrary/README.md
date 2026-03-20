@@ -19,10 +19,22 @@
       - 레이어 다이어그램 (Application → Library API → Core Components)
    
    ### 4.2 스레드 모델
-   - IOCP Worker Thread 구조 : IOCP를 통해 Session 객체, Overlapped 객체, 전송 바이트 수를 받는다. 이후 받은 Overlapped 객체와 Session 객체 내부의 Overlapped 객체를 비교하여 Send/Recv에 대한 완료 통지를 구분한다. Recv 완료 통지에 대해서는 RingBuffer에 데이터를 받았으니 Rear를 옮긴 후 RingBuffer 내부의 데이터를 하나의 메시지로 조립하여 OnRecv 콜백을 호출한다. RingBuffer에 완성된 메시지가 더 이상 없다면 비동기 WSARecv를 걸고 마무리한다. Send 완료 통지에 대해서는 전송한 CSerializedBuffer를 모두 Free 한 후, 세션의 _sendQ를 확인하여 다시 WSASend를 호출한다. 각 I/O 작업이나 참조 시 IoCount를 증가시키며, 완료 통지의 최하단에서 IoCount를 줄이며 0이 될 시 세션의 삭제를 진행한다.
+   - IOCP Worker Thread 구조
+
+     > IOCP를 통해 Session 객체, Overlapped 객체, 전송 바이트 수 수신
+     
+     > Session 객체의 Overlappaed와 IOCP로 받은 Overlapped 객체를 비교하여 Recv/Send 판별
+     
+     > Recv 완료 통지에서는 RingBuffer에서 완성된 메시지를 뽑아 OnRecv 호출 후 WSARecv를 다시 호출한다.
+
+     > Send 완료 통지에서는 전송한 CSerializedBuffer를 모두 Free 한 후, 세션의 _sendQ를 확인하여 다시 WSASend를 호출한다.
+
+     > 각 I/O 작업이나 참조 시 IoCount를 증가시키며, 완료 통지의 최하단에서 IoCount를 줄이며 0이 될 시 세션의 삭제를 진행한다.
    - 스레드 개수 및 역할 : AcceptThread * 1, TPSThread * 1, IOCPThread * N
-     -> AcceptThread : 루프를 돌며 계속 세션을 Accept 한다. 세션 연결 시 OnConnectRequest로 접속 여부를 확인하고 접속에 성공하고 세션 정보를 만들었다면 OnConnected 콜백을 호출한다.
-     -> TPSThread : 패킷 송수신, Accept 정보를 매 초 저장한다.
+     
+     > AcceptThread : 루프를 돌며 계속 세션을 Accept 한다. 세션 연결 시 OnConnectRequest로 접속 여부를 확인하고 접속에 성공하고 세션 정보를 만들었다면 OnConnected 콜백을 호출한다.
+     
+     > TPSThread : 패킷 송수신, Accept 정보를 매 초 저장한다.
 
 ## 5. 핵심 컴포넌트 (Core Components)
    ### 5.1 직렬화 버퍼
@@ -84,7 +96,7 @@
 
       WSASend(session->socket, wsabuf, ...);
 
-      }
+   }
    ```
    - **[상세 문서](1.%20NetworkLibrary/Components/LockFreeQueue.md)**
    
