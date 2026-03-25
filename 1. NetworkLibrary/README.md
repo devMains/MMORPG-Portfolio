@@ -14,7 +14,7 @@
    - [기술 스택](#8-기술-스택-tech-stack)
    - [사용 사례](#9-사용-사례-use-cases)
    - [기술적 의사 결정](#10-기술적-의사결정-technical-decisions)
-   - [제한 사항](#11-제한사항-및-알려진-이슈-limitaions)
+   - [제한 사항](#11-제한사항-및-알려진-이슈-limitations)
    - [관련 문서](#12-관련-문서-related-documents)
 
 ## 3. 주요 특징 (Key Features)
