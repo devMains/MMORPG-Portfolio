@@ -6,7 +6,7 @@
    ![주요 성능 지표](../Images/Charts.png)
 
 ## 2. 목차 (Table of Contents)
-   - 주요 특징
+   - [주요 특징](#3.-주요-특징-(key-features))
    - 아키텍쳐
    - 핵심 컴포넌트
    - API 사용법
