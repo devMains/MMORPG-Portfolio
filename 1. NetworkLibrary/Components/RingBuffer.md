@@ -24,6 +24,8 @@
   - MoveRear(int), MoveFront(int) : _rear와 _front를 이동시킨다.
   - Lock, Unlock : 내부의 SRWLock 객체를 이용하여 AcquireSRWLockExclusive, ReleaseSRWLockExclusive를 래핑하여 필요 시 동기화를 할 수 있다.
 
+![내부 메커니즘](../../Images/CRingBuffer.png)
+
 ## 4. 사용 예시 (Usage Examples)
 - 기본 사용법
   ```
