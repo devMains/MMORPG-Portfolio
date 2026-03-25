@@ -1,11 +1,20 @@
 # [Network Library] - 고성능 네트워크 라이브러리
 
 ## 1. 개요 (Overview)
-   - 한 문장 설명 : 직접 제작한 Windows IOCP 기반 네트워크 라이브러리이다.
+   - 직접 제작한 Windows IOCP 기반 네트워크 라이브러리이다.
    - 주요 성능 지표 (테이블 형태)
 
 ## 2. 목차 (Table of Contents)
-   - 빠른 네비게이션 링크
+   - 주요 특징
+   - 아키텍쳐
+   - 핵심 컴포넌트
+   - API 사용법
+   - 성능
+   - 기술 스택
+   - 사용 사례
+   - 기술적 의사 결정
+   - 제한 사항
+   - 관련 문서
 
 ## 3. 주요 특징 (Key Features)
    - 비동기 I/O : 완료 통지 기반 IOCP 이용, 동기 I/O가 일어날 수 있는 환경에서 Zero-Copy 옵션 제공으로 비동기 I/O 제공
@@ -19,22 +28,10 @@
       - 레이어 다이어그램 (Application → Library API → Core Components)
    
    ### 4.2 스레드 모델
-   - IOCP Worker Thread 구조
-
-     > IOCP를 통해 Session 객체, Overlapped 객체, 전송 바이트 수 수신
-     
-     > Session 객체의 Overlappaed와 IOCP로 받은 Overlapped 객체를 비교하여 Recv/Send 판별
-     
-     > Recv 완료 통지에서는 RingBuffer에서 완성된 메시지를 뽑아 OnRecv 호출 후 WSARecv를 다시 호출한다.
-
-     > Send 완료 통지에서는 전송한 CSerializedBuffer를 모두 Free 한 후, 세션의 _sendQ를 확인하여 다시 WSASend를 호출한다.
-
-     > 각 I/O 작업이나 참조 시 IoCount를 증가시키며, 완료 통지의 최하단에서 IoCount를 줄이며 0이 될 시 세션의 삭제를 진행한다.
+   - IOCP Worker Thread 구조 : IOCP를 통해 Session 객체, Overlapped 객체, 전송 바이트 수를 받는다. 이후 받은 Overlapped 객체와 Session 객체 내부의 Overlapped 객체를 비교하여 Send/Recv에 대한 완료 통지를 구분한다. Recv 완료 통지에 대해서는 RingBuffer에 데이터를 받았으니 Rear를 옮긴 후 RingBuffer 내부의 데이터를 하나의 메시지로 조립하여 OnRecv 콜백을 호출한다. RingBuffer에 완성된 메시지가 더 이상 없다면 비동기 WSARecv를 걸고 마무리한다. Send 완료 통지에 대해서는 전송한 CSerializedBuffer를 모두 Free 한 후, 세션의 _sendQ를 확인하여 다시 WSASend를 호출한다. 각 I/O 작업이나 참조 시 IoCount를 증가시키며, 완료 통지의 최하단에서 IoCount를 줄이며 0이 될 시 세션의 삭제를 진행한다.
    - 스레드 개수 및 역할 : AcceptThread * 1, TPSThread * 1, IOCPThread * N
-     
-     > AcceptThread : 루프를 돌며 계속 세션을 Accept 한다. 세션 연결 시 OnConnectRequest로 접속 여부를 확인하고 접속에 성공하고 세션 정보를 만들었다면 OnConnected 콜백을 호출한다.
-     
-     > TPSThread : 패킷 송수신, Accept 정보를 매 초 저장한다.
+     -> AcceptThread : 루프를 돌며 계속 세션을 Accept 한다. 세션 연결 시 OnConnectRequest로 접속 여부를 확인하고 접속에 성공하고 세션 정보를 만들었다면 OnConnected 콜백을 호출한다.
+     -> TPSThread : 패킷 송수신, Accept 정보를 매 초 저장한다.
 
 ## 5. 핵심 컴포넌트 (Core Components)
    ### 5.1 직렬화 버퍼
@@ -96,7 +93,7 @@
 
       WSASend(session->socket, wsabuf, ...);
 
-   }
+      }
    ```
    - **[상세 문서](1.%20NetworkLibrary/Components/LockFreeQueue.md)**
    
@@ -193,7 +190,7 @@
       > OS : Windows Server 2019 Standard Evaluation
       
       > Compiler : MSVC 19.44.35222
-   
+
    ### 7.2 벤치마크 결과
    - 표 제작
    - 동시 접속자 수
@@ -201,40 +198,33 @@
    - 평균 레이턴시
    - 메모리 사용량 (테이블로 정리)
    
-   ### 7.3 컴포넌트별 성능 개선
-   - Before/After 비교 테이블
-   - 개선율 강조
+   - [성능 분석 문서](1.%20NetworkLibrary/Performance.md)
 
 ## 8. 기술 스택 (Tech Stack)
    - 언어 및 버전 : C++ 17
    - 플랫폼 : Windows
    - 빌드 도구 : Microsoft Visual Studio 2022
 
-## 11. 사용 사례 (Use Cases)
+## 9. 사용 사례 (Use Cases)
 - [로그인 서버](2.%20Servers/LoginServer/README.md)
 - [채팅 서버](2.%20Servers/ChatServer/README.md)
 
-## 12. 기술적 의사결정 (Technical Decisions)
-### 12.1 IOCP 선택 이유
+## 10. 기술적 의사결정 (Technical Decisions)
+### 10.1 IOCP 선택 이유
    - 문제 : MMORPG 게임 서버에서는 수 많은 인원을 처리해야 한다. 그러나 기존의 Windows 소켓 모델들은 사용할 때 불편하거나 구조적 한계가 존재한다. Select와 WSAEventSelect 모델은 한 번에 관리할 수 있는 소켓의 수가 64개로 제한되어 모든 소켓을 순회하며 상태를 체크해야 하는 단점이 존재한다. 다음으로 WSAAsyncSelect는 Windows의 메시지 루프에 종속되어 멀티 스레드로 게임 서버를 설계하기 어렵다는 단점이 존재한다. 또한 접속이 이루어질 때마다 스레드를 생성하여 처리하는 Concurrent 모델에서는 스레드 콘텍스트 스위칭이 자주 일어날 수 있을 뿐만 아니라 스레드 생성/삭제에 대한 오버헤드가 발생한다.
    - 해결 : Windows IOCP 모델은 위 단점을 대부분 해결하여 편리한 기능을 제공한다. 비동기 입출력의 완료 통지를 통해 다른 작업을 수행할 수 있으며, 직접 스레드 풀을 관리하여 적절한 스레드의 개수를 유지할 수 있다. 소켓을 순회하며 이벤트를 처리하는 방식이 아닌 이벤트 발생 시 작업이 완료된 소켓의 정보를 받아서 즉시 처리가 가능하다.
    - 결과 : 적은 수의 고정된 스레드만으로도 1만 명 이상의 동시 접속을 안정적으로 수용할 수 있는 기반을 마련하였다. I/O 대기 시간과 불필요한 컨텍스트 스위칭의 감소로 CPU 자원을 잘 활용할 수 있게 되었다. 
 
-### 12.2 Lock-Free 세션 관리
-   - 문제 : 하나의 세션에 대해 여러 스레드가 접근하게 되어 경합이 발생하게 된다. SendPacket이나 Disconnect와 같은 콘텐츠에서 접근하는 함수 내부에서 경합이 발생하게 되면 콘텐츠 로직에 영향을 줄 수 있게 된다. 한 명의 유저에 대해 다른 스레드에서 동시다발적으로 메시지를 보내는 상황이 흔하진 않지만 혹시 모를 최악의 상황을 가정한 것이다.
-   - 해결 : Interlocked 연산을 이용하여 세션의 정보를 수정하고, IoCount를 이용하여 세션의 참조 카운트로도 활용한다. 세션에게 보낼 메시지는 락 프리 큐를 이용한다. 
-   - 결과 : 여러 스레드에서 동시적인 SendPacket 또는 Disconnect 호출 시 발생하는 경합에 대해 콘텐츠 로직 영향 없이 작동할 수 있다.
-
-### 12.3 Zero-Copy 최적화
+### 10.2 Zero-Copy 최적화
    - 문제 : TCP의 송신 버퍼 내부에 공간이 남아 있다면 WSASend는 그 즉시 Fast I/O를 통해 송신 버퍼에 데이터를 복사하고 반환한다. 이는 진정한 의미의 비동기 I/O가 아니다. 사용자가 직접 등록한 버퍼를 대상으로 직접 I/O를 하는 Direct I/O가 진정한 의미의 비동기 I/O라고 할 수 있다.
    - 해결 : TCP 송신 버퍼의 크기를 0으로 조절하는 ZeroCopy 기법을 이용한다. 실제 유저가 WSASend의 버퍼로 등록한 메모리에 페이지 락을 걸어 페이지 아웃되는 상황을 방지한다. 이후 드라이버는 등록한 버퍼의 데이터를 읽어서 송신한다.
    - 결과 : 네트워크의 송신량에 따라 성능 결과가 다르다. 네트워크 송신량이 적을 때는 Direct I/O를 위해 버퍼를 등록하는 과정이 송신 버퍼에 복사하는 Fast I/O보다 느리다. 따라서 일정 수준 이상의 네트워크 송신량을 가지고 있을 때 Fast I/O의 복사보다 Direct I/O의 등록 과정이 더 빠른 상황에서 사용할 수 있도록 옵션으로 제공한다. 추가로 TCP의 드라이버는 실제로는 소프트웨어로 이루어져 CPU를 사용하게 되는데, 이 과정에서 서버의 CPU 사용량에 영향을 미치게 될 수도 있기 때문에 무조건 좋다고는 할 수 없다.
 
-## 13. 제한사항 및 알려진 이슈 (Limitations)
+## 11. 제한사항 및 알려진 이슈 (Limitations)
 - 제한 사항 : CPU 아키텍쳐가 변경되어 64비트 체제가 아니게 되거나 64비트 체제이지만 주소 범위가 증가하여 상위 17비트의 주소를 사용한다면 락 프리 큐의 ABA 문제 해결을 위해 사용하였던 상위 비트 마스킹 기법을 사용할 수 없게 된다.
 - 미구현 기능
 
-## 18. 관련 문서 (Related Documents)
+## 12. 관련 문서 (Related Documents)
 - [컴포넌트 상세 문서](1.%20NetworkLibrary/Components)
 - [아키텍처 문서](1.%20NetworkLibrary/Architecture.md)
 - [성능 분석](1.%20NetworkLibrary/Performance.md)
