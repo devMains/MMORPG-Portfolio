@@ -52,7 +52,7 @@
       SendPacket(sessionId, buffer);
    }
    ```
-   - **[상세 문서](1.%20NetworkLibrary/Components/SerializedBuffer.md)**
+   - **[상세 문서](./Components/SerializedBuffer.md)**
    
    ### 5.2 수신용 링버퍼
    - 간단한 설명 : 바이트 스트림을 하나의 메시지 단위로 만들기 위해 미완성된 메시지를 들고 있는 환형 큐이다. 
@@ -73,7 +73,7 @@
    buffer->Push(recvQ.GetFrontBufferPtr(), packetSize);
    OnRecv(session->id, buffer);
    ```
-   - **[상세 문서](1.%20NetworkLibrary/Components/RingBuffer.md)**
+   - **[상세 문서](./Components/RingBuffer.md)**
    
    ### 5.3 송신용 락 프리 큐
    - 간단한 설명 : 직렬화 버퍼(SerializedBuffer)를 메시지 단위로 가지고 있는 락 프리 큐이다. 동기화 객체 없이 CAS 연산을 통해 삽입과 삭제를 수행한다.
@@ -96,7 +96,7 @@
 
       }
    ```
-   - **[상세 문서](1.%20NetworkLibrary/Components/LockFreeQueue.md)**
+   - **[상세 문서](./Components/LockFreeQueue.md)**
    
    ### 5.4 TLS 메모리풀
    - 간단한 설명 : 직렬화 버퍼 및 락 프리 큐의 노드와 같이 많이 사용되는 자원에 대해서 미리 할당을 하여 동적 할당/해제에 소모되는 시간을 줄이기 위해 만든 메모리 풀이다. TLS를 이용하여 스레드 별 힙을 이용하여 디폴트 힙의 경합을 줄이고 스레드 간 경합을 줄인다.
@@ -119,7 +119,7 @@
       return returnData;
    }
    ```
-   - **[상세 문서](1.%20NetworkLibrary/Components/TLSMemoryPool.md)**
+   - **[상세 문서](./Components/TLSMemoryPool.md)**
 
 ## 6. API 사용법 (Usage)
    ### 6.1 기본 사용법
@@ -201,8 +201,8 @@
    - 빌드 도구 : Microsoft Visual Studio 2022
 
 ## 9. 사용 사례 (Use Cases)
-- [로그인 서버](2.%20Servers/LoginServer/README.md)
-- [채팅 서버](2.%20Servers/ChatServer/README.md)
+- [로그인 서버](../2.%20Servers/LoginServer/README.md)
+- [채팅 서버](../2.%20Servers/ChatServer/README.md)
 
 ## 10. 기술적 의사결정 (Technical Decisions)
 ### 10.1 IOCP 선택 이유
@@ -220,8 +220,8 @@
 - 미구현 기능
 
 ## 12. 관련 문서 (Related Documents)
-- [컴포넌트 상세 문서](1.%20NetworkLibrary/Components)
-- [아키텍처 문서](1.%20NetworkLibrary/Architecture.md)
-- [성능 분석](1.%20NetworkLibrary/Performance.md)
-- [로그인 서버](2.%20Servers/LoginServer/README.md)
-- [채팅 서버](2.%20Servers/ChatServer/README.md)
+- [컴포넌트 상세 문서](./Components)
+- [아키텍처 문서](./Architecture.md)
+- [성능 분석](./Performance.md)
+- [로그인 서버](../2.%20Servers/LoginServer/README.md)
+- [채팅 서버](../2.%20Servers/ChatServer/README.md)
