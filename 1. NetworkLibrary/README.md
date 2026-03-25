@@ -7,15 +7,15 @@
 
 ## 2. 목차 (Table of Contents)
    - [주요 특징](#3-주요-특징-key-features)
-   - 아키텍쳐
-   - 핵심 컴포넌트
-   - API 사용법
-   - 성능
-   - 기술 스택
-   - 사용 사례
-   - 기술적 의사 결정
-   - 제한 사항
-   - 관련 문서
+   - [아키텍쳐](#4-아키텍처-architecture)
+   - [핵심 컴포넌트](5-핵심-컴포넌트-core-components)
+   - [API 사용법](6-api-사용법-usage)
+   - [성능](7-성능-performance)
+   - [기술 스택](8-기술-스택-tech-stack)
+   - [사용 사례](9-사용-사례-use-cases)
+   - [기술적 의사 결정](10-기술적-의사결정-technical-decisions)
+   - [제한 사항](11-제한사항-및-알려진-이슈-limitaions)
+   - [관련 문서](12-관련-문서-related-documents)
 
 ## 3. 주요 특징 (Key Features)
    - 비동기 I/O : 완료 통지 기반 IOCP 이용, 동기 I/O가 일어날 수 있는 환경에서 Zero-Copy 옵션 제공으로 비동기 I/O 제공
