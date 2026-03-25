@@ -29,7 +29,8 @@
   - AllocNewNode() : 분배용 큐에도 존재하지 않을 때 로컬 힙을 이용하여 할당
   - GetTotalSize() : 동적 할당한 모든 메모리의 개수
   - GetUseSize() : 로컬 풀에 가지고 있는 모든 메모리의 개수
-- 내부 메커니즘 : 그림으로 대체
+
+![내부 메커니즘](../../Images/CObjectPoolTLS.png)
 
 ## 5. 사용 예시 (Usage Examples)
 - 기본 사용법
