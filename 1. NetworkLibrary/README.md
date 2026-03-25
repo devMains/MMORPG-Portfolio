@@ -193,7 +193,7 @@
       > Compiler : MSVC 19.44.35222
 
    ### 7.2 벤치마크 결과
-   - [성능 분석 문서](../Performance.md)
+   - [성능 분석 문서](./Performance.md)
 
 ## 8. 기술 스택 (Tech Stack)
    - 언어 및 버전 : C++ 17
