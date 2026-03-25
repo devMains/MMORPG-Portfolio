@@ -193,12 +193,6 @@
       > Compiler : MSVC 19.44.35222
 
    ### 7.2 벤치마크 결과
-   - 표 제작
-   - 동시 접속자 수
-   - 패킷 처리량 (packets/sec)
-   - 평균 레이턴시
-   - 메모리 사용량 (테이블로 정리)
-   
    - [성능 분석 문서](1.%20NetworkLibrary/Performance.md)
 
 ## 8. 기술 스택 (Tech Stack)
