@@ -24,7 +24,8 @@
 - 주요 메서드
   - Enqueue(T) : 데이터를 큐에 삽입
   - Dequeue(T&) : 데이터를 큐에서 추출
-- 내부 메커니즘 : 그림으로 대체
+
+![내부 메커니즘](../../Images/LockFreeQueueImage.png)
 
 ## 5. 사용 예시 (Usage Examples)
 - 기본 사용법
