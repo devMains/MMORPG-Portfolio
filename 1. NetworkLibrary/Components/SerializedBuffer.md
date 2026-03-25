@@ -24,7 +24,8 @@
   - SetUseSize(int) : 사용중인 크기를 임의로 설정한다.
   - GetHeaderPtr/GetBufferPtr() : 헤더 위치의 포인터, 바디 위치의 포인터를 반환한다.
   - static Alloc()/Free(CSerializedBuffer*) : 풀에서 버퍼의 포인터를 할당/반환한다. Free 시 _ref가 0이 되어야 풀에 반환한다.
-- 내부 메커니즘
+
+![내부 메커니즘](../../Images/SerializedBuffer.png)
 
 ## 4. 사용 예시 (Usage Examples)
 - 기본 사용법
