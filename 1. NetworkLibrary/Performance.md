@@ -6,7 +6,13 @@
      
 ## 2. 성능 목표 (Performance Goals)
    ### 2.1 타겟 지표
-   ![타겟 지표](../Images/NetLibPerformance/1.png)
+   |지표|기준치|달성치|
+   |:---:|:---:|:---:|
+   |동시 접속| 10,000명 | 10,000명 |
+   |레이턴시| < 100ms | 85ms |
+   |처리량| 4M pps | 6M pps |
+   |CPU 사용률| < 70% | 68% |
+   |메모리| < 500MB | 320MB |
    
    ### 2.2 목표 설정 근거
    - 실사용 시나리오 고려
@@ -44,30 +50,44 @@
 
 ## 4. 벤치마크 방법론 (Methodology)
    ### 4.1 부하 테스트 시나리오
-      - 서버 컴퓨터와 LAN으로 직접 연결된 컴퓨터에서 더미를 가동
-      - 2,500명 단위로 늘려가며 에코 테스트 진행
-      - 각 세션은 에코에 대한 답이 오기 전 최대 50개의 메시지를 전송
+   - 서버 컴퓨터와 LAN으로 직접 연결된 컴퓨터에서 더미를 가동
+   - 2,500명 단위로 늘려가며 에코 테스트 진행
+   - 각 세션은 에코에 대한 답이 오기 전 최대 50개의 메시지를 전송
    
    ### 4.2 측정 도구
-      - 처리량: 자체 제작 카운터
-      - 레이턴시: 더미에서 답장을 받은 시간 측정
-      - CPU/메모리: Windows Performance Monitor
-      - 네트워크: Windows Performance Monitor
+   - 처리량: 자체 제작 카운터
+   - 레이턴시: 더미에서 답장을 받은 시간 측정
+   - CPU/메모리: Windows Performance Monitor
+   - 네트워크: Windows Performance Monitor
    
    ### 4.3 측정 방법
-      - 각 시나리오 최소 2시간 이상 진행
-      - 평균 계산
-      - 이상치 제거 (상위/하위 10%)
+   - 각 시나리오 최소 2시간 이상 진행
+   - 평균 계산
+   - 이상치 제거 (상위/하위 10%)
 
 ## 5. 전체 시스템 성능 (Overall Performance)
    ### 5.1 처리량 (Throughput)
-   ![처리량](../Images/NetLibPerformance/2.png)
-   
+   | 동시 접속  | 패킷 처리량     | TPS   |
+   |:---:|:---:|:---:|
+   | 2,500     | 2.3M pps      | 1.15M |
+   | 5,000     | 4.5M pps      | 2.25M |
+   | 7,500     | 6.5M pps      | 3.25M |
+   | 10,000    | 7M pps        | 3.5M  |
    ### 5.2 레이턴시 (Latency)
-   ![레이턴시](../Images/NetLibPerformance/3.png)
+   | 동시 접속 | 평균 |
+   |:---:|:---:|
+   | 2,500   | 9ms  |
+   | 5,000   | 14ms |
+   | 7,500   | 55ms |
+   | 10,000  | 87ms |
    
    ### 5.3 리소스 사용량
-   ![리소스 사용량](../Images/NetLibPerformance/4.png)
+   | 동시 접속 | CPU (%) | 메모리 (MB) | 네트워크 (Mbps) |
+   |:---:|:---:|:---:|:---:|
+   | 2,500    | 24     | 140        | 470            |
+   | 5,000    | 48     | 205        | 950            |
+   | 7,500    | 66     | 285        | 1,350          |
+   | 10,000   | 68     | 330        | 1,400          |
 
    ### 5.4 특이사항
    - 7,500명까지 선형적으로 증가하지만 10,000명 테스트 시 선형적으로 증가하지 않는다.
@@ -77,24 +97,24 @@
 ## 6. 컴포넌트별 성능 (Component Performance)
    ### 6.1 TLS 메모리풀 (Thread-Local Memory Pool)
    #### Before 최적화 (전역 풀 + 락 프리)
-      할당 시간: 1139ns
-      Lock Contention: 높음
+   - 할당 시간: 1139ns
+   - Lock Contention: 높음
       
    #### After 최적화 (TLS 풀 + Mutex)
-      할당 시간: 133ns
-      Lock Contention: 낮음
+   - 할당 시간: 133ns
+   - Lock Contention: 낮음
       
    #### 개선 효과
-      전역 풀 : 1139ns
-      TLS 풀 : 133ns
-      > 88% 시간 개선
+   - 전역 풀 : 1139ns
+   - TLS 풀 : 133ns
+   > 88% 시간 개선
 
    ### 6.2 락 프리 큐 (Lock-Free Queue)
    #### SRWLock을 이용한 Enqueue
-      할당 시간 : 161ns
+   - 할당 시간 : 161ns
 
    #### CAS 연산을 이용한 Enqueue
-      할당 시간 : 159ns
+   - 할당 시간 : 159ns
 
    #### 특이 사항
    - 락 프리 큐가 성능상의 이득을 보기 위해서는 2가지 조건이 필요하다.
@@ -110,25 +130,32 @@
 
 ## 7. 메모리 프로파일링 (Memory Profiling)
    ### 7.1 메모리 사용량 분석
-   ![메모리 사용량](../Images/NetLibPerformance/5.png)
+   컴포넌트              | 메모리 (10K 접속 기준)
+   :---:|:---:
+   세션 객체            | 30.7MB (3.1KB/세션)
+   링버퍼               | 47.6MB (4.8KB/세션)
+   송신 큐              | 18.3MB (48바이트/노드, 약 40만개 기준)
+   메모리 풀            | 88.2MB (150바이트/직렬화 버퍼, 약 60만개 기준)
+   기타 (스택 등)       | 140MB
+   합계                 | 324.8MB
    
    ### 7.2 메모리 누수 테스트
-      테스트: 24시간 지속 부하 (10,000명)
-      결과: 일정 수준 이후로 메모리 증가 없음
+   - 테스트: 24시간 지속 부하 (10,000명)
+   - 결과: 일정 수준 이후로 메모리 증가 없음
 
 ## 8. 스레드 성능 (Thread Performance)
    ### 8.1 스레드 구성
-      Accept Thread: 1개
-      TPS Thread: 1개
-      IOCP Worker: 사용자 설정
+   - Accept Thread: 1개
+   - TPS Thread: 1개
+   - IOCP Worker: 사용자 설정
 
 ## 9. 안정성 테스트 (Stability Test)
    ### 9.1 장시간 부하 테스트
-      기간: 1주일 지속
-      부하: 15,000명 동시 접속, 초당 12,000 - 16,000개의 메시지 및 1,200 - 1,600회의 재접속
-      결과: 
-        - 크래시: 0건
-        - 성능 저하: 가끔 IOCP 큐의 심한 경합으로 인해 CPU 사용률이 급격하게 떨어지는 현상이 발생하며 처리량 저하
+   - 기간: 1주일 지속
+   - 부하: 15,000명 동시 접속, 초당 12,000 - 16,000개의 메시지 및 1,200 - 1,600회의 재접속
+   - 결과: 
+   	- 크래시: 0건
+    - 성능 저하: 가끔 IOCP 큐의 심한 경합으로 인해 CPU 사용률이 급격하게 떨어지는 현상이 발생하며 처리량 저하
 
 ## 10. 성능 모니터링 (Performance Monitoring)
    ### 10.1 실시간 메트릭
@@ -144,10 +171,10 @@
 
 ## 11. 프로파일링 도구 (Profiling Tools)
    ### 11.1 사용 도구
-      - CPU: GetSystemInfo, GetSystemTimes
-      - 메모리: Visual Studio Memory Profiler
-      - 네트워크: Performance Counter
-      - 커스텀: PDH, 자체 제작 타이머
+   - CPU: GetSystemInfo, GetSystemTimes
+   - 메모리: Visual Studio Memory Profiler
+   - 네트워크: Performance Counter
+   - 커스텀: PDH, 자체 제작 타이머
    
    ### 11.2 프로파일링 방법
       VISITABLE_STRUCT(MonitoringSt, cpus, mem, npmem, recvTps, sendTps, acceptTps, serializedBuffer);
