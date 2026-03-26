@@ -26,7 +26,21 @@
 
 ## 4. 아키텍처 (Architecture)
    ### 4.1 전체 구조
-      - 레이어 다이어그램 (Application → Library API → Core Components)
+      ┌─────────────────────────────┐
+      │   Application Layer         │
+      ├─────────────────────────────┤
+      │   Network Library API       │
+      |   - virtual function        |
+      |   - SendPacket              |
+      |   - Disconnect              | 
+      ├─────────────────────────────┤
+      │   Core Components           │
+      │   - Protocol Parse          │
+      │   - Packet Process          │
+      │   - Accept / Disconnect     │
+      ├─────────────────────────────┤
+      │   I/O Layer (IOCP)          │
+      └─────────────────────────────┘
    
    ### 4.2 스레드 모델
    - IOCP Worker Thread 구조 : IOCP를 통해 Session 객체, Overlapped 객체, 전송 바이트 수를 받는다. 이후 받은 Overlapped 객체와 Session 객체 내부의 Overlapped 객체를 비교하여 Send/Recv에 대한 완료 통지를 구분한다. Recv 완료 통지에 대해서는 RingBuffer에 데이터를 받았으니 Rear를 옮긴 후 RingBuffer 내부의 데이터를 하나의 메시지로 조립하여 OnRecv 콜백을 호출한다. RingBuffer에 완성된 메시지가 더 이상 없다면 비동기 WSARecv를 걸고 마무리한다. Send 완료 통지에 대해서는 전송한 CSerializedBuffer를 모두 Free 한 후, 세션의 _sendQ를 확인하여 다시 WSASend를 호출한다. 각 I/O 작업이나 참조 시 IoCount를 증가시키며, 완료 통지의 최하단에서 IoCount를 줄이며 0이 될 시 세션의 삭제를 진행한다.
