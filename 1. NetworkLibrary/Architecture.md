@@ -174,7 +174,7 @@
    - Use-After-Free 방지 : 메시지 참조 카운트를 이용한 메모리 수명 관리
 
 ## 13. 모니터링 아키텍처 (Monitoring)
-   **[모니터링 문서 바로가기](1.%20NetworkLibrary/Components/Monitoring.md)**
+   **[모니터링 문서 바로가기](1.%20NetworkLibrary/Monitoring.md)**
 
 ## 14. 설계 패턴 (Design Patterns)
    ### 14.1 사용된 패턴
