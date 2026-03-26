@@ -83,4 +83,4 @@
 
 ## 6. 관련 문서 (Links)
 - [Architecture & Protocol (아키텍처 및 통신 규약)](Architecture.md)
-- [네트워크 라이브러리 코어 문서](../1.%20NetworkLibrary/README.md)
+- [네트워크 라이브러리 코어 문서](../../1.%20NetworkLibrary/README.md)
