@@ -8,12 +8,7 @@
 
 ## 2. 성능 목표 (Performance Goals)
    ### 2.1 타겟 지표 (부하 테스트, 10k 접속)
-       - 지표 : (기준치) / (달성치)
-       - 동시 접속 : 10,000명 / 10,000명
-       - 레이턴시  : < 100ms / 65ms
-       - 처리량    : 1M pps / 1.5M pps
-       - CPU 사용률: < 35% / 30%
-       - 메모리    : < 500MB / 250MB
+   ![타겟 지표](../../Images/ChatServerPerformance/1.png)
 
    ### 2.2 목표 설정 근거
        - 레이턴시는 인간이 즉시 반응한다고 느끼는 속도의 마지노선인 100ms로 설정
@@ -30,22 +25,13 @@
       - 재접속 처리 TPS 1.5k
 
    ### 3.1 처리량 (Throughput)
-      | 동시 접속  | 패킷 처리량     | TPS(Send) |
-      | 5,000     | 50k pps       | 45k       |
-      | 10,000    | 185k pps      | 175k      |
-      | 15,000    | 400k pps      | 370k      |
+   ![타겟 지표](../../Images/ChatServerPerformance/2.png)
    
    ### 3.2 레이턴시 (Latency)
-      | 동시 접속 | 평균 |
-      | 5,000   | 3ms  |
-      | 10,000  | 6ms  |
-      | 15,000  | 8ms  |
+   ![타겟 지표](../../Images/ChatServerPerformance/3.png)
    
    ### 3.3 리소스 사용량
-      | 동시 접속 | CPU (%) | 메모리 (MB) | 네트워크 (Mbps) |
-      | 5,000    | 2      | 225        | 85             |
-      | 10,000   | 6      | 231        | 320            |
-      | 15,000   | 10     | 250        | 670            |
+   ![타겟 지표](../../Images/ChatServerPerformance/4.png)
 
 ## 4. 전체 시스템 성능 - 부하 시나리오 (Overall Performance - Overload Scenario)
    ### 4.0 부하 시나리오 (Overload Scenario)
@@ -54,22 +40,13 @@
       - 재접속 처리 TPS 1k
 
    ### 4.1 처리량 (Throughput)
-      | 동시 접속  | 패킷 처리량     | TPS(Send) |
-      | 5,000     | 0.6M pps      | 0.55M     |
-      | 10,000    | 1.5M pps      | 1.4M      |
-      | 15,000    | 2.6M pps      | 2.5M      |
+   ![타겟 지표](../../Images/ChatServerPerformance/5.png)
    
    ### 4.2 레이턴시 (Latency)
-      | 동시 접속 | 평균 |
-      | 5,000   | 30ms |
-      | 10,000  | 65ms |
-      | 15,000  | 190ms|
+   ![타겟 지표](../../Images/ChatServerPerformance/6.png)
    
    ### 4.3 리소스 사용량
-      | 동시 접속 | CPU (%) | 메모리 (MB) | 네트워크 (Mbps) |
-      | 5,000    | 15      | 200        | 750            |
-      | 10,000   | 30      | 250        | 1,900          |
-      | 15,000   | 50      | 330        | 3,000          |
+   ![타겟 지표](../../Images/ChatServerPerformance/7.png)
  
 ## 5. 기술적 도전과 문제 해결 (Troubleshooting)
 - [문제 1] 과부하 환경에서 메모리 사용량이 급증하는 현상
