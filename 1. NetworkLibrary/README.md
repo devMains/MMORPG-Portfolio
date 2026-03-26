@@ -2,7 +2,7 @@
 
 ## 1. 개요 (Overview)
    - 직접 제작한 Windows IOCP 기반 네트워크 라이브러리이다.
-     
+   - 주요 성능 지표
    ![주요 성능 지표](../Images/Charts.png)
 
 ## 2. 목차 (Table of Contents)
