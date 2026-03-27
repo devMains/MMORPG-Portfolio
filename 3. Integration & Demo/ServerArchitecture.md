@@ -8,8 +8,6 @@
 
 ![구상도](../Images/TotalServerFlow.png)
 
-![구상도](../Images/SystemOverview.png)
-
 ### 각 컴포넌트의 역할
 - 네트워크 코어: 모든 서버의 통신 기반이 되는 커스텀 고성능 C++ 라이브러리
 - 로그인 서버: 계정 인증
