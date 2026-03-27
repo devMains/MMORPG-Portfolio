@@ -6,6 +6,8 @@
 
 ## 1. 시스템 전체 구성도 (System Overview)
 
+![구상도](../Images/TotalServerFlow.png)
+
 ![구상도](../Images/SystemOverview.png)
 
 ### 각 컴포넌트의 역할
