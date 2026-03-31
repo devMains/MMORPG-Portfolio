@@ -114,10 +114,10 @@ struct Session {
 `수신 → 링버퍼(RingBuffer) 적재 → Size 확인 후 패킷 분리 → 역직렬화 및 복호화(Random/Constant Key) → OnRecv 콜백 전달`
 
 ## 8. 메모리 관리 아키텍처 (Memory Management)
-🔗 **[TLS 메모리 풀 문서 바로가기](1.%20NetworkLibrary/Components/TLSMemoryPool.md)**
+🔗 **[TLS 메모리 풀 문서 바로가기](./Components/TLSMemoryPool.md)**
 
 ## 9. 직렬화 아키텍처 (Serialization Architecture) 
-🔗 **[직렬화 버퍼 문서 바로가기](1.%20NetworkLibrary/Components/SerializedBuffer.md)**
+🔗 **[직렬화 버퍼 문서 바로가기](./Components/SerializedBuffer.md)**
 
 ## 10. 에러 처리 아키텍처 (Error Handling)
 
