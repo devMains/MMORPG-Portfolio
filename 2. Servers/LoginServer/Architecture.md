@@ -27,7 +27,6 @@
 
 ### 2.2 주요 패킷 명세 (API)
 *   **[REQ] LOGIN:** `Type(2)`, `AccountNumber(8)`, `SessionKey(64)` 
-    *(참고: 클라이언트가 입력한 외부 ID/PW를 암호화하여 보내는 최초 로그인 패킷이 별도로 존재함을 전제합니다)*
 *   **[RES] LOGIN:** `Type(2)`, `AccountNumber(8)`, `Status(1)`, `ID(40, wchar)`, `Nickname(40, wchar)`, `GameServerIp(32, wchar)`, `GameServerPort(2)`, `ChatServerIp(32, wchar)`, `ChatServerPort(2)`
 
 ### 2.3 주요 상호작용 시퀀스 (Sequence Diagram)
@@ -41,7 +40,7 @@ sequenceDiagram
     
     C->>S: 1. TCP 연결 (OnConnected)
     C->>S: 2. [REQ] LOGIN (계정 정보)
-    S->>DB: 3. 계정 조회 및 비밀번호(Bcrypt) 검증
+    S->>DB: 3. 계정 조회 및 비밀번호 검증
     DB-->>S: 인증 성공 (계정 정보 반환)
     S->>R: 4. 신규 세션 키 생성 및 저장 (TTL 1분 설정)
     R-->>S: 저장 완료
