@@ -13,7 +13,6 @@
 ## 2. 목차 (Table of Contents)
 - [주요 특징](#3-주요-특징-key-features)
 - [아키텍처](#4-아키텍처-architecture)
-- [그룹 실행 모델](#4-3-그룹-실행-모델-group-execution-model)
 - [핵심 컴포넌트](#5-핵심-컴포넌트-core-components)
 - [API 사용법](#6-api-사용법-usage)
 - [성능](#7-성능-performance)
