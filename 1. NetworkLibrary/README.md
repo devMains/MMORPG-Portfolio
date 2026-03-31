@@ -1,4 +1,4 @@
-# 🌐 [Network Library] - 자체 제작 고성능 C++ 네트워크 라이브러리
+# 🌐 [Network Library] - 자체 제작 C++ 네트워크 라이브러리
 
 ## 1. 개요 (Overview)
 
@@ -65,7 +65,7 @@ graph TD
 *   **[상세 문서](./Components/RingBuffer.md)**
 
 ### 5.3 락 프리 큐 (Lock-Free Queue)
-*   **설명:** 동기화 객체(Mutex/SRWLock)의 대기 시간 없이, 64비트 CAS 연산과 포인터 마스킹을 활용해 패킷 버퍼를 안전하게 삽입/추출하는 고성능 송신 대기 큐입니다.
+*   **설명:** 동기화 객체(Mutex/SRWLock)의 대기 시간 없이, 64비트 CAS 연산과 포인터 마스킹을 활용해 패킷 버퍼를 안전하게 삽입/추출하는 송신 대기 큐입니다.
 *   **[상세 문서](./Components/LockFreeQueue.md)**
 
 ### 5.4 TLS 메모리 풀 (Thread-Local Memory Pool)
