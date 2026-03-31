@@ -63,6 +63,7 @@ graph TD
 *   **그룹의 개념:**
     *   인스턴스 던전, 레이드 파티, 필드 채널, PVP 전장 등 **논리적으로 독립된 게임 공간을 하나의 Group으로 표현**합니다.
     *   각 그룹은 고유한 `frameRate`를 가지며, 초당 N프레임으로 `Update()`와 그룹 메시지 처리 루프(`GroupProcess`)가 호출됩니다.
+    *   지정한 frameRate는 최대 프레임 지정으로 내부 메시지 처리나 Update 처리가 늦어진다면 프레임을 보장할 수 없습니다. Update의 처리 시간이 1000ms 이하라면 최소 프레임 1은 보장됩니다. 
 *   **실행 구조:**
     *   **CNetServerGroup**는 그룹 전체를 관리하는 매니저 역할을 하며, `RegisterGroup(ICNetServerGroup* p)` 호출을 통해 그룹을 등록합니다.
     *   내부적으로 `GroupTimerThread`가 **타이머 큐(nextGroupAlertTime)**를 관리하여, 각 그룹의 다음 실행 시점이 되면 그룹 전용 작업 큐(`groupQueue`)에 스케줄링 이벤트를 넣고 IOCP에 신호를 보냅니다.
