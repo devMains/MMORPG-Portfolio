@@ -62,7 +62,7 @@ sequenceDiagram
 ## 3. 데이터 모델 (Data Model)
 
 ### 3.1 RDBMS 스키마 (MySQL) - 인증 참고용
-*   `account` 테이블: 계정 관리 (`AccountNumber`, `UserId`, `UserPassword(Bcrypt)`, `UserNickname`)
+*   `account` 테이블: 계정 관리 (`AccountNumber`, `UserId`, `UserPassword`, `UserNickname`)
 *   `status` 테이블: 유저 상태 (`AccountNumber`, `Status`)
 *   `whiteIp` 테이블: 접속 허용 IP 목록 (`Number`, `Ip`)
 
