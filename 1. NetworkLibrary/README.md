@@ -20,7 +20,7 @@
 - [사용 사례](#9-사용-사례-use-cases)
 - [기술적 의사 결정](#10-기술적-의사결정-technical-decisions)
 - [제한 사항](#11-제한사항-및-알려진-이슈-limitations)
-- [관련 문서](#12-관련-문서-related-documents)
+- [관련 문서](#12-관련-문서-references)
 
 ## 3. 주요 특징 (Key Features)
 *   **비동기 I/O 모델:** 완료 통지(Completion Port) 기반의 비동기 네트워크 송수신 구조. 송신 병목 해소를 위한 **Zero-Copy (Direct I/O)** 활성화 옵션 제공.
