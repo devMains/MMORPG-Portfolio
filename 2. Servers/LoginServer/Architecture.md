@@ -1,52 +1,85 @@
-# [멀티스레드 기반 로그인 서버] 아키텍처 및 설계 문서
+# 🔑 [로그인 서버] 아키텍처 및 설계 문서
+
+## 0. 문서 개요 (Overview)
+
+| 항목 | 상세 내용 |
+| :--- | :--- |
+| **목적** | 자체 네트워크 라이브러리를 활용하여 구현한 중앙 집중형 인증(로그인) 서버의 아키텍처 설계 |
+| **핵심 구조** | • **Stateless 설계:** 서버 내부 메모리를 사용하지 않고 MySQL과 Redis에 100% 의존하여 스케일 아웃(Scale-out) 용이<br>• **동기 I/O 최적화:** DB 접근 시 발생하는 I/O 블로킹 대처를 위한 스레드 풀 및 TLS 커넥션 풀 운용 |
+| **데이터 모델** | MySQL 기반 계정 검증 및 Redis 기반 일회성 세션 키(OTP Session) 발급 |
 
 ![서버 아키텍쳐](../../Images/TotalServerFlow.png)
 
 ## 1. 시스템 아키텍처 (System Architecture)
-- 전체 구성도: Client ↔ Server ↔ Database(Redis/MySQL) 흐름 다이어그램
-- 스레드 모델:
-  - 네트워크 라이브러리의 IOCP Worker 스레드는 OnConnected, OnDisconnected, OnRecv 등의 콜백 함수를 통해 세션의 상태를 전달
-  - 콜백 함수 내부에서 즉시 로그인 처리 함수를 호출 -> 네트워크 라이브러리 스레드에서 직접 처리
-  - 로그인 처리 함수 내부에는 DB 접근으로 인한 I/O Bound가 자주 발생하기 때문에 네트워크 스레드의 개수를 많이 생성한다. Concurrent 스레드를 조절하여 CPU 사용량 조절.
+
+*   **전체 구성도:** 클라이언트 ↔ 로그인 서버 ↔ 데이터베이스(Redis/MySQL)로 이어지는 인증 흐름.
+*   **스레드 모델 (Direct Execution):** 
+    *   네트워크 라이브러리의 **IOCP Worker 스레드**가 `OnConnected`, `OnRecv` 이벤트를 수신하면, 채팅 서버처럼 별도의 잡 큐(Job Queue)로 넘기지 않고 **그 즉시 로그인 처리 함수를 동기적으로 실행**합니다.
+    *   **I/O Bound 병목 대처:** 로그인 로직 내부에는 DB 접근(MySQL/Redis)으로 인한 스레드 블로킹(대기)이 필연적으로 발생합니다. 이를 보완하기 위해 **IOCP의 전체 워커 스레드 수(Total Thread)를 넉넉하게 생성**하여 일부 스레드가 블로킹되더라도 OS 스케줄러가 남은 스레드를 깨워 다른 유저의 로그인을 처리할 수 있게 설계했습니다. (Concurrent 스레드 수를 통해 CPU 점유율 조절)
 
 ![서버 아키텍쳐](../../Images/LoginServerFlow.png)
 
 ## 2. 통신 프로토콜 (Network Protocol)
-- 패킷 구조 (Packet Layout):
-  - 공통 헤더
-  > Code(1), Length(2), Random Key(1), CheckSum(1)
-- 주요 패킷 명세 (API):
-  > [REQ] LOGIN : Type(2), AccountNumber(8), SessionKey(64)
 
-  > [RES] LOGIN : Type(2), AccountNumber(8), Status(1), ID(40, wchat), Nickname(40, wchar), GameServerIp(32, wchar), GameServerPort(2), ChatServerIp(32, wchar), ChatServerPort(2)
+### 2.1 패킷 구조 (Packet Layout)
+*   **공통 헤더 (5 Bytes):**
+    *   `Code(1)` | `Length(2)` | `Random Key(1)` | `CheckSum(1)`
 
-- 주요 상호작용 시퀀스 (Sequence Diagram):
-  - 클라이언트 접속부터 주요 로직(로그인 성공/채널 입장) 완료까지의 흐름도
+### 2.2 주요 패킷 명세 (API)
+*   **[REQ] LOGIN:** `Type(2)`, `AccountNumber(8)`, `SessionKey(64)` 
+    *(참고: 클라이언트가 입력한 외부 ID/PW를 암호화하여 보내는 최초 로그인 패킷이 별도로 존재함을 전제합니다)*
+*   **[RES] LOGIN:** `Type(2)`, `AccountNumber(8)`, `Status(1)`, `ID(40, wchar)`, `Nickname(40, wchar)`, `GameServerIp(32, wchar)`, `GameServerPort(2)`, `ChatServerIp(32, wchar)`, `ChatServerPort(2)`
+
+### 2.3 주요 상호작용 시퀀스 (Sequence Diagram)
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as Login Server
+    participant DB as MySQL (Account DB)
+    participant R as Redis (Session Cache)
+    
+    C->>S: 1. TCP 연결 (OnConnected)
+    C->>S: 2. [REQ] LOGIN (계정 정보)
+    S->>DB: 3. 계정 조회 및 비밀번호(Bcrypt) 검증
+    DB-->>S: 인증 성공 (계정 정보 반환)
+    S->>R: 4. 신규 세션 키 생성 및 저장 (TTL 1분 설정)
+    R-->>S: 저장 완료
+    S-->>C: 5. [RES] LOGIN (성공, 세션 키 및 게임/채팅 서버 IP 반환)
+    S->>S: 6. 소켓 정상 종료 (Disconnect)
+```
 
 ## 3. 데이터 모델 (Data Model)
-- RDBMS 스키마 (MySQL): (로그인/계정 관련 시)
-  - 핵심 테이블 구조
 
-  > account (AccountNumber, UserId, UserPassword(hashed), UserNickname)
+### 3.1 RDBMS 스키마 (MySQL)
+*   `account`: 유저 기본 정보 (`AccountNumber`, `UserId`, `UserPassword(hashed)`, `UserNickname`)
+*   `status`: 유저 상태 관리 및 제재 여부 (`AccountNumber`, `Status`)
+*   `whiteIp`: 관리자 및 테스트용 접속 허용 IP 목록 (`Number`, `Ip`)
 
-  > status (AccountNumber, Status)
+### 3.2 캐시 및 인메모리 구조 (Redis)
+*   **Key 네이밍 규칙:** 로그인 서버는 다른 서버(게임, 채팅 등)에서 사용할 수 있도록 목적지별로 별도의 세션 키를 생성하여 Redis에 저장합니다.
+    *   `{AccountNumber}_C` : 채팅 서버용 Session Key
+    *   `{AccountNumber}_G` : 게임 서버용 Session Key
+*   **데이터 만료(TTL) 및 세션 유지 정책:** 세션 키의 수명은 1분(60초)입니다. 로그인 성공 직후 클라이언트가 각 서버로 이동하여 최초 접속 시에만 사용되는 일회성 토큰이므로, 한 번 읽히면 폐기되며 별도의 세션 연장(Keep-alive)을 지원하지 않습니다.
 
-  > whiteIp (Number, Ip)
-
-- 캐시 및 인메모리 구조 (Redis): 
-
-  - 키(Key) 네이밍 규칙 : {"AccountNumber_C" : sessionKey}, {"AccountNumber_G" : sessionKey}, 채팅 서버/게임 서버와 같이 다른 서버에도 로그인 시 동일 세션 키를 이용할 것이기 때문에 _C, _G 등을 뒤에 붙여서 키로 활용한다.
-
-  - 데이터 만료(TTL) 및 세션 유지 정책 : TTL은 1분이며, 세션 키를 한 번 확인하면 해당 키를 폐기한다. 세션 키를 재활용 하지 않으므로 세션 유지 정책은 지원하지 않는다.
-
-- 내부 메모리 모델 (In-Memory Data Structures):
-  - 유저에 대한 정보는 MySQL에 저장되어 있고, 세션 키에 대한 정보는 Redis에 저장하기 때문에 서버 차원에서 들고 있어야 할 정보는 없다.
+### 3.3 서버 내부 메모리 모델 (In-Memory Data Structures)
+*   **Stateless 아키텍처:** 유저의 모든 영구 데이터는 MySQL에, 휘발성 인증 상태는 Redis에 저장하므로 **로그인 서버 자체의 메모리에는 유저 상태를 보관하지 않습니다.** 이는 로그인 서버의 다중화(Scale-out)를 매우 쉽게 만들어줍니다.
 
 ## 4. 핵심 비즈니스 로직 (Core Business Logic)
-- 상태 관리 (State Machine)
-> OnConnected -> OnRecv -> LoginProcess -> OnDisconnect
 
-> 일정 시간 메시지 전송이 없다면 서버에서 세션을 끊는다.
+### 4.1 상태 전이 파이프라인 (State Machine)
+```mermaid
+stateDiagram-v2
+    [*] --> Connected : 소켓 Accept
+    Connected --> Login_Process : OnRecv (로그인 패킷 수신)
+    Login_Process --> Connected : 검증 실패 (에러 응답)
+    Login_Process --> Disconnected : 검증 성공 (성공 응답 후 연결 해제)
+    Connected --> Disconnected : Timeout (일정 시간 무응답)
+    Disconnected --> [*] : 세션 반환
+```
+*   **Timeout 정책:** 의미 없는 연결 유지를 막기 위해, 소켓 연결 후 일정 시간 내에 로그인 패킷을 보내지 않으면 서버에서 선제적으로 세션을 강제 종료합니다.
 
-- 기타 (Etc.)
-> Redis와 MySQL에 대한 연결은 TLS로 관리하여 스레드마다 가지게 한다.
+### 4.2 데이터베이스 커넥션 관리 (Concurrency Control)
+*   **TLS 커넥션 풀 (Thread-Local Storage):**
+    *   MySQL과 Redis에 접근하기 위한 Connection 객체들을 전역 풀(Global Pool)에서 Lock을 걸고 가져오는 대신, **각 워커 스레드가 자신의 TLS(Thread-Local Storage)에 독립적인 Connection 객체를 들고 있도록 구성**했습니다.
+    *   이를 통해 다수의 스레드가 동시에 DB 쿼리를 수행하더라도 커넥션 획득을 위한 락 경합(Lock Contention)이 전혀 발생하지 않아 높은 TPS를 유지할 수 있습니다.
