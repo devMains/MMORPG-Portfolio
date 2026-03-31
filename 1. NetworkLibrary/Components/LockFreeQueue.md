@@ -8,7 +8,7 @@
 | **핵심 기술** | • **64비트 포인터 마스킹:** 상위 비트 카운터를 적용해 ABA 문제 해결 (Double CAS 대체)<br>• **CAS 연산:** 락 점유 및 대기 시간 감소 |
 | **해결 과제** | • 다중 스레드 환경에서 패킷 큐/작업 큐 접근 시 발생하는 동기화 병목 해결<br>• 객체 풀 재사용 시 발생하는 고질적인 ABA 문제 해결 |
 
-🔗 **[관련 문서: 노드 풀 상세 문서 (TLSMemoryPool)](1.%20NetworkLibrary/Components/TLSMemoryPool.md)**
+🔗 **[관련 문서: 노드 풀 상세 문서 (TLSMemoryPool)](./TLSMemoryPool.md)**
 
 ## 2. 왜 필요한가? (Motivation)
 
