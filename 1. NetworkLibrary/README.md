@@ -45,10 +45,10 @@ graph TD
     B --- C(Core Components)
     C ---|Protocol Parse / Session Mngr / Buffer / Group| D(I/O Layer - IOCP)
     
-    style A fill:#e3f2fd,stroke:#333,stroke-width:2px
-    style B fill:#fff3e0,stroke:#333,stroke-width:2px
-    style C fill:#e8f5e9,stroke:#333,stroke-width:2px
-    style D fill:#fce4ec,stroke:#333,stroke-width:2px
+    style A fill:#e3f2fd,stroke:#333,stroke-width:2px, color:#000000
+    style B fill:#fff3e0,stroke:#333,stroke-width:2px, color:#000000
+    style C fill:#e8f5e9,stroke:#333,stroke-width:2px, color:#000000
+    style D fill:#fce4ec,stroke:#333,stroke-width:2px, color:#000000
 ```
 
 ### 4.2 스레드 모델
@@ -71,7 +71,7 @@ graph TD
     *   지정한 frameRate는 최대 프레임 지정으로 내부 메시지 처리나 Update 처리가 늦어진다면 프레임을 보장할 수 없습니다. Update의 처리 시간이 1000ms 이하라면 최소 프레임 1은 보장됩니다. 
 *   **실행 구조:**
     *   **CNetServerGroup**는 그룹 전체를 관리하는 매니저 역할을 하며, `RegisterGroup(ICNetServerGroup* p)` 호출을 통해 그룹을 등록합니다.
-    *   내부적으로 `GroupTimerThread`가 **타이머 큐(nextGroupAlertTime)**를 관리하여, 각 그룹의 다음 실행 시점이 되면 그룹 전용 작업 큐(`groupQueue`)에 스케줄링 이벤트를 넣고 IOCP에 신호를 보냅니다.
+    *   내부적으로 `GroupTimerThread`가 **타이머 큐(nextGroupAlertTime)** 를 관리하여, 각 그룹의 다음 실행 시점이 되면 그룹 전용 작업 큐(`groupQueue`)에 스케줄링 이벤트를 넣고 IOCP에 신호를 보냅니다.
     *   IOCP 워커 스레드는 `groupQueue`에서 `GroupQueueNode`를 꺼내어 `GroupProcess`를 호출하고, 이 안에서 해당 그룹의 메시지 큐를 순차적으로 비우고(`PopMessage`) `Update()`를 수행합니다.
 *   **직렬화(Serialization) 보장:**
     *   그룹 내부에서는 `group->Enter() / Quit()`를 통해 **동시에 단 하나의 스레드만 그룹 로직에 진입**할 수 있습니다.
