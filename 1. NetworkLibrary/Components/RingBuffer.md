@@ -32,7 +32,6 @@
 *   `Peek(char* dest, int size)`: 데이터를 읽어오되, 데이터를 소모하지 않으므로 `_front`를 이동시키지 않습니다. (주로 패킷 헤더 확인 용도)
 *   `GetBufferPtr()`, `GetFrontBufferPtr()`, `GetRearBufferPtr()`: 기본 버퍼 시작 주소, 현재 `_front`, 현재 `_rear`의 메모리 포인터를 반환합니다.
 *   `MoveRear(int size)`, `MoveFront(int size)`: 실제 데이터 복사 없이 논리적인 커서(`_rear`, `_front`)만 전진시킵니다.
-*   `Lock()`, `Unlock()`: 내부 `SRWLOCK` 객체를 래핑(`AcquireSRWLockExclusive`, `ReleaseSRWLockExclusive`)하여 필요 시 스레드 동기화를 수행합니다.
 
 ![내부 메커니즘](../../Images/CRingBuffer.png)
 
@@ -91,8 +90,6 @@ WSARecv(socket, wsabuf, bufCnt, ...);
 
 ## 5. 기술적 도전과 해결 (Technical Challenges)
 
-*   **[문제] 멀티스레드 환경에서의 안전성 확보**
-    *   기본적인 링버퍼는 여러 스레드가 동시 접근할 경우 커서(`_front`, `_rear`)가 꼬일 위험이 있어 `SRWLOCK`을 래핑하여 동기화 기능을 제공했습니다.
 *   **[최적화] 단일 생산자-단일 소비자(SPSC) 모델에서의 Lock-Free 처리**
     *   네트워크 수신부의 특성상 I/O 스레드가 데이터를 넣고(Enqueue), 로직 스레드가 데이터를 빼는(Dequeue) **1:1 구조**가 자주 발생합니다. 이 경우 삽입과 추출이 서로 독립적인 커서를 수정하므로 동시 작동을 허용할 수 있다고 판단했습니다.
 *   **[해결] 로컬 변수 캡처를 통한 가시성(Visibility) 제어**
