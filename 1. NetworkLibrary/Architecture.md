@@ -103,6 +103,101 @@ struct Session {
 *   **참조 카운팅 (IoCount):** 세션 해제 시점의 사용을 막기 위해 `IoCount`를 운용합니다. 진행 중인 비동기 I/O가 0이 될 때만 세션을 풀에 반환합니다.
 *   **송수신 동시 1회 제한:** 세션당 동시에 걸려있는 `WSASend`와 `WSARecv`를 각각 1회로 제한하여 패킷 순서(Serialization)를 보장하고 Overlapped 구조체 관리의 복잡성을 낮췄습니다.
 
+```cpp
+
+// 세션 접근 시
+bool CNetServerGroup::SendPacket(long long sessionId, CSerializedBuffer* buffer) {
+   Session* session = _sessionMap[GetIdx(sessionId)];
+
+   // 참조 카운트 증가
+   long d = InterlockedIncrement((long*)&session->ioCount);
+   // 다른 스레드가 세션 종료 중이라면 반환
+   if ((d & _releaseMask) == _releaseMask) {
+      return false;
+   }
+
+   // 세션이 변경되었으면 반환
+   if (session->id != sessionId) {
+      // ioCount 감소 및 정리
+      ReleaseSession(session);
+      return false;
+   }
+
+   // 세션 작업...
+
+   // ioCount 감소 및 정리
+   ReleaseSession(session);
+}
+
+
+// 종료 및 릴리즈 작업
+void CNetServerGroup::ReleaseSession(Session* session) {
+   // 줄인 ioCount가 0인지 확인
+   if (!InterlockedDecrement((long*)&session->ioCount)) {
+      // 0으로 줄였다면 릴리즈 마스크 값으로 바꿈
+      if (!InterlockedCompareExchange((long*)&session->ioCount, _releaseMask, 0)) {
+         // 연결 끊김 플래그를 세움
+         if (!InterlockedExchange((long*)&session->disconnected, 1)) {
+            closesocket(session->s);
+
+            // 그룹에 존재한다면 그룹 퇴장 메시지 전달
+            if (session->group != 0) {
+               session->group->msgQ.Enqueue(_quitMsg);
+            }
+
+            // 연결 끊김 콜백 함수 호출
+            OnClientDisconnected(session->id);
+            // 세션 반환
+            _emptySession.Push(GetIdx(session->id));
+         }
+      }
+   }
+}
+```
+
+```cpp
+unsigned __stdcall CNetServerGroup::WorkerThread(void* param) {
+   while (1) {
+      DWORD cbTransferred = 0;
+      ULONG_PTR completionKey = 0;
+      LPOVERLAPPED overlapped = 0;
+
+      int ret = GetQueuedCompletionStatus(_completionPort, &cbTransferred, &completionKey, &overlapped, INFINITE);
+
+      Session* session = (Session*)completionKey;
+
+      if (&session->recvOverlapped == overlapped) {
+         // 받은 데이터를 패킷으로 완성하여 OnRecv로 알림
+         RecvProcess(session);
+
+         // Recv 완료 통지 이후 다시 WSARecv를 걸어서 1회 제한
+         InterlockedIncrement((long*)&session->ioCount);
+         if (!RecvPost(session)) {
+            InterlockedDecrement((long*)&session->ioCount);
+         }
+      }
+      else if (&session->sendOverlapped.overlapped == overlapped) {
+         // 이전 WSASend에서 사용한 직렬화 버퍼를 반환
+         for (int i = 0; i < session->sendOverlapped.bufferCnt; i++) {
+            CSerializedBuffer::Free(session->sendOverlapped.buffer[i]);
+         }
+         session->sendOverlapped.bufferCnt = 0;
+
+         // SendPost 내부에서 session의 send flag 검사로 WSASend 1회 제한
+         SendPost(session);
+      }
+
+      // 완료 통지에 대한 ioCount를 줄이고 정리
+      if (session != 0)
+         ReleaseSession(session);
+
+      // 그룹 관련 작업 실시
+      GroupProcess();
+   }
+   return 0;
+}
+```
+
 ## 7. 패킷 처리 아키텍처 (Packet Processing)
 
 ### 7.1 패킷 구조 (Header: 5 bytes)
