@@ -19,6 +19,8 @@
 
 ## 1. 프로젝트 개요
 
+<img width="320" height="240" alt="Image" src="https://github.com/user-attachments/assets/2617071a-55cc-4a9f-a9cc-3aceb81a3234" />
+
 이 게임 서버는 **n × n 격자 공간**에 배치된 플레이어들의 위치를 기준으로,  
 각 플레이어 주변 **3×3 섹터** 내 다른 플레이어의 움직임과 상호작용을 실시간으로 보여주는 서버입니다.
 
