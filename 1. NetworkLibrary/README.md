@@ -78,8 +78,9 @@ graph TD
     *   같은 그룹에 속한 유저들의 `OnRecv`, `OnGroupJoinned`, `OnGroupQuitted`, `Update`는 항상 단일 스레드에서 순차적으로 실행되므로, **보스 HP 감소, 버프 갱신, 아이템 드랍 등 그룹 내 공유 상태가 경쟁 조건 없이 안전하게 유지**됩니다.
 *   **세션-그룹 매핑 및 버전 관리:**
     *   `RegisterSessionToGroup(sessionId, groupNumber)` API를 통해 세션을 특정 그룹에 등록/이동할 수 있습니다.
-    *   세션 객체에는 `groupVersion` 필드를 두고, 그룹 이동 시마다 이 버전을 증가시킵니다.
-    *   그룹 메시지에는 `(sessionId, version)`이 함께 실려 들어가며, `GroupProcess`에서 메시지를 처리할 때 **현재 세션의 `groupVersion`과 메시지에 담긴 `version`을 비교**하여 과거 그룹에서 늦게 도착한 지연 패킷(예: 이전 필드에서의 공격/이동 패킷)을 자동으로 폐기합니다.
+    *   ~~세션 객체에는 `groupVersion` 필드를 두고, 그룹 이동 시마다 이 버전을 증가시킵니다.~~
+    *   ~~그룹 메시지에는 `(sessionId, version)`이 함께 실려 들어가며, `GroupProcess`에서 메시지를 처리할 때 **현재 세션의 `groupVersion`과 메시지에 담긴 `version`을 비교**하여 과거 그룹에서 늦게 도착한 지연 패킷(예: 이전 필드에서의 공격/이동 패킷)을 자동으로 폐기합니다.~~
+    *   그룹 메시지에는 `(sessionId)`이 함께 실려 들어가며, `GroupProcess`에서 메시지를 처리할 때 현재 세션의 그룹 이동 상태를 판단하고, 이동 중인 경우 세션의 `pendingQ`에 메시지를 쌓아두고 다음 그룹에서 처리합니다.
 *   **사용 예:**
     *   로그인 후 `MyLanServer::OnRecv`에서 인증이 끝나면 `RegisterSessionToGroup`으로 인던/필드 그룹 번호를 지정합니다.
     *   콘텐츠 서버는 `ICNetServerGroup`을 상속한 `MyGroup` 클래스에서 `OnGroupJoinned`, `OnRecv`, `Update`, `OnGroupQuitted`를 구현하여 해당 그룹(던전/필드)만의 게임 로직을 작성합니다.
@@ -110,7 +111,8 @@ graph TD
     *   **그룹 등록/해제:** `RegisterGroup(ICNetServerGroup* p)`를 통해 새로운 그룹을 등록하면, 내부적으로 그룹 ID 할당, 타이머 큐 등록, 그룹 전용 스레드/작업 스케줄링이 자동으로 설정됩니다.
     *   **메시지 라우팅:** 세션이 특정 그룹에 속한 경우, 해당 세션의 수신 패킷은 `IOCP Worker -> CNetServerGroup -> 해당 그룹의 메시지 큐`를 거쳐 그룹 로직으로 라우팅됩니다.
     *   **그룹 단위 직렬화:** `GroupProcess`에서 `group->Enter()`를 호출하여 그룹 단위 락을 획득한 뒤, 큐에 쌓인 메시지를 FIFO 순서로 처리하고 `Update()`까지 수행한 후 `Quit()`으로 락을 해제합니다. 이 과정에서 **동일 그룹 내의 모든 상태 변경은 항상 직렬화된 순서로 처리**됩니다.
-    *   **지연 패킷 필터링:** 세션의 `groupVersion`을 사용하여, 그룹 이동 중 발생할 수 있는 "이전 그룹의 늦게 도착한 패킷"을 필터링하여 게임 상태가 꼬이지 않도록 방어합니다.
+    *   ~~**지연 패킷 필터링:** 세션의 `groupVersion`을 사용하여, 그룹 이동 중 발생할 수 있는 "이전 그룹의 늦게 도착한 패킷"을 필터링하여 게임 상태가 꼬이지 않도록 방어합니다.~~
+    *   **지연 패킷 전달 보장:** 그룹 이동 중 발생하는 메시지는 세션의 PendingQ에 메시지를 쌓아두고 그룹 이동 완료 시 PendingQ의 내용을 먼저 처리 후 로직을 처리할 수 있도록 합니다. 동일 컨텐츠를 가진 그룹 간 이동 발생 시 무조건적인 메시지의 무시는 유저에게 메시지 씹힘으로 보일 수 있습니다. OnRecv에서 해당 콘텐츠의 로직인지 판단 후 버릴 수 있도록 하였습니다.
 *   **콘텐츠 개발자 관점:**
     *   `ICNetServerGroup`을 상속한 `MyGroup` 클래스에서 `OnGroupJoinned`, `OnRecv`, `Update`, `OnGroupQuitted`만 구현하면, 해당 그룹은 **안전한 멀티스레드 환경에서 독립적으로 동작하는 게임 월드**가 됩니다.
 
