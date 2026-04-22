@@ -121,15 +121,15 @@ sequenceDiagram
   - `SRWLOCK` worldPlayerMapLock : 전체 플레이어 정보 접근 시 이용
   - `SECTOR_AROUND[SECTOR_SIZE_X][SECTOR_SIZE_Y]` sectorAround : 주위 섹터의 좌표를 저장
   - `SECTOR_AROUND[SECTOR_SIZE_X][SECTOR_SIZE_Y][8]` prevSectorAround : 8방향 이동에 따라 사라지거나 추가되는 주변 섹터 좌표 저장
-  - `SECTOR_AROUND[SECTOR_SIZE_X][SECTOR_SIZE_Y][2]` attackAround : 2방향 공격에 따라 공격 판정을 계산해야 하는 주변 섹터 좌표 저장
   - `std::vector<PLAYER*>[SECTOR_SIZE_X][SECTOR_SIZE_Y]` sectorList : 섹터에 어떤 플레이어가 들어있는지 저장
   - `SRWLOCK[SECTOR_SIZE_X][SECTOR_SIZE_Y]` sectorListLock : 섹터 단위 동기화 객체
 - 스레드 자료 구조
+  - `SECTOR_AROUND[SECTOR_SIZE_X][SECTOR_SIZE_Y][2]` attackAround : 2방향 공격에 따라 공격 판정을 계산해야 하는 주변 섹터 좌표 저장
   - `std::unordered_map<sessionId, PLAYER*>` playerMap : 네트워크 라이브러리의 sessionId와 PLAYER 객체를 저장
   - `int` sectorX, sectorY : 그룹의 섹터 좌표
   - `OnGroupJoinned()`, `OnGroupQuitted()`, `OnRecv()`, `Update()` 인터페이스
 
-- 차이점 : 섹터 관리가 “그룹(스레드) 내부”에서만 이뤄지던 구조에서, 전역 섹터 구조로 확장되었습니다. 각 그룹은 섹터 좌표를 기반으로 자신이 담당하는 영역을 판단합니다.
+- 차이점 : 섹터 관리가 “그룹(스레드) 내부”에서만 이뤄지던 구조에서, 전역 섹터 구조로 확장되었습니다. 각 그룹은 섹터 좌표를 기반으로 자신이 담당하는 영역을 판단합니다. 단, 공격은 동일 그룹 내에서만 이루어지기 때문에 공격 범위 섹터는 여전히 그룹 내부에 존재합니다.
 
 #### 2.2.3 장단점
 
