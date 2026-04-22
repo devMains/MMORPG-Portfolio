@@ -20,6 +20,7 @@
 *   **네트워크 코어 (Network Core):** 모든 서버의 통신 뼈대가 되는 커스텀 비동기(IOCP) C++ 라이브러리.
 *   **로그인 서버 (Login Server):** 외부 퍼블리셔(플랫폼) 인증 대행, DB 데이터 검증 및 자체 내부 세션 키 발급.
 *   **채팅 서버 (Chat Server):** 실시간 채팅 패킷 중계, 공간(그리드) 분할 기반의 메시지 브로드캐스팅.
+*   **게임 서버 (Game Server):** N x N 섹터 기반 게임 컨텐츠 서버, 3x3의 주변 섹터의 정보를 전파.
 *   **Redis (Session Cache):** 로그인 서버에서 발급한 유저의 **내부 Session Key**를 중앙 집중형으로 저장하는 글로벌 인메모리 캐시. 이를 통해 다른 서버(채팅/게임)에서 메모리를 공유하지 않고도 유저의 인증 상태를 빠르게 검증할 수 있습니다.
 *   **MySQL (User DB):** 영구적인 유저 계정, 프로필 및 게임 데이터 저장.
 
@@ -86,3 +87,4 @@ sequenceDiagram
 *   **[Core]** [고성능 네트워크 라이브러리 아키텍처 및 코어 상세](../../1.%20NetworkLibrary/README.md)
 *   **[Server]** [로그인 서버 (인증 파이프라인 및 DB 연동)](../../2.%20Servers/LoginServer/README.md)
 *   **[Server]** [채팅 서버 (공간 분할 동기화 및 다채널 전파)](../../2.%20Servers/ChatServer/README.md)
+*   **[Server]** [게임 서버 (3x3 주변 섹터 기반 행동 전파)](../../2.%20Servers/GameServer/README.md)
