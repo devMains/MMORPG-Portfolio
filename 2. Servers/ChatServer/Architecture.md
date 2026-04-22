@@ -96,8 +96,70 @@ stateDiagram-v2
 ### 4.2 동시성 제어 (Concurrency Control)
 *   **Job Queue (Actor Model) 방식 패킷 처리:**
     *   수신된 모든 메시지는 각 플레이어 고유의 `MessageQ` (Lock-Free Queue)에 삽입됩니다.
-    *   하나의 플레이어 객체는 **한 번에 단 하나의 로직 스레드만 꺼내어 처리**하도록 `ProcessingFlag` 변수에 CAS(Compare-And-Swap) 연산을 적용하여 원자적으로 진입을 제어합니다.
+    *   하나의 플레이어 객체의 메시지 직렬화 보장을 위해 **한 번에 단 하나의 로직 스레드만 꺼내어 처리**하도록 `ProcessingFlag` 변수에 Interlocked 연산을 적용하여 원자적으로 진입을 제어합니다.
 *   **섹터 이동 및 채팅 브로드캐스팅 동기화:**
     *   메시지를 전파하는 도중 플레이어가 섹터를 이동해버리면 **메시지 유실(Loss)이나 중복 수신(Duplication)**이 발생할 수 있습니다. 이를 방지하기 위해 주변 섹터(3x3)에 브로드캐스트를 수행할 때는, 관련된 9개 섹터에 대한 읽기 락을 동시에 획득(Deadlock 회피를 위해 순서 정렬 필수)하여 순간적인 이동 처리를 차단합니다.
-*   **I/O Bound 병목 완화 (Redis 연동 시):**
-    *   Redis 조회를 수행하는 동안 스레드가 블로킹되어 다른 클라이언트의 처리가 지연되는 것을 막기 위해, Windows OS 스케줄러가 대기 상태를 감지하면 여분의 스레드를 투입할 수 있도록 전체 워커 스레드 수를 넉넉히 잡고, 동시에 실행 가능한 스레드 수만 CPU 코어에 맞게 제한하는 전략을 사용했습니다.
+
+```cpp
+class ChatServer : public CLanServer {
+	virtual void OnRecv(long long sessionId, CSerializedBuffer* buffer) {
+		PLAYER* p = FindPlayer(sessionId);
+		p->msgQ.Enqueue(buffer);
+		int d = InterlockedExchange16(&p->processing, 1);
+		if (!d) {
+			int a = PostQueuedCompletionStatus(hcp, MESSAGE_PROCESS, sessionId, 0);
+		}
+	}
+};
+
+unsigned __stdcall ContentThread(void* param) {
+   std::vector<long long> sessionIdList;
+
+   while (1) {
+         DWORD type = 0;
+         ULONG_PTR sessionId = 0;
+         LPOVERLAPPED overlapped = 0;
+         int ret = GetQueuedCompletionStatus(hcp, &type, &sessionId, &overlapped, INFINITE);
+         PLAYER* p = FindPlayer(sessionId);
+
+         // 메시지 처리
+         switch (type) {
+         case MESSAGE_PROCESS:
+         {
+            CSerializedBuffer* buf = 0;
+            p->msgQ.Dequeue(buf);
+            p->lastRecvTime = timeGetTime();
+				// 패킷 타입 확인
+            unsigned short packetType;
+            *buf >> packetType;
+            switch (packetType) {
+            case CHAT_MESSAGE:
+            {
+               // 플레이어 주변 3x3 동기화를 걸고 주위 플레이어의 id 획득
+               GetSectorAroundLock(p->x, p->y);
+               GetSessionIdList(sessionIdList, p);
+               ReleaseSectorAroundLock(p->x, p->y);
+
+               // 얻은 id 기반 메시지 전송
+               SendMessage(sessionIdList, buf);
+            }
+               break;
+            default: 
+               break;
+            }
+         }
+            break;
+         }
+
+         // 처리할 메시지가 남아있다면 IOCP 완료통지 큐에 메시지 삽입
+         if (p->msgQ.GetSize() > 0) {
+            PostQueuedCompletionStatus(hcp, MESSAGE_PROCESS, sessionId, 0);
+         }
+         else {
+            // 처리할 메시지가 없다면 processing 플래그 초기화
+            InitFlag(p);
+         }
+      }
+   }
+}
+```
