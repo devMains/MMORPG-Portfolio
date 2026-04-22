@@ -84,7 +84,7 @@ sequenceDiagram
 
 전체 시스템을 구성하는 각 모듈의 상세한 설계 원리, 프로토콜, 성능 지표는 아래 개별 문서를 확인해 주세요.
 
-*   **[Core]** [고성능 네트워크 라이브러리 아키텍처 및 코어 상세](../../1.%20NetworkLibrary/README.md)
-*   **[Server]** [로그인 서버 (인증 파이프라인 및 DB 연동)](../../2.%20Servers/LoginServer/README.md)
-*   **[Server]** [채팅 서버 (공간 분할 동기화 및 다채널 전파)](../../2.%20Servers/ChatServer/README.md)
-*   **[Server]** [게임 서버 (3x3 주변 섹터 기반 행동 전파)](../../2.%20Servers/GameServer/README.md)
+*   **[Core]** [고성능 네트워크 라이브러리 아키텍처 및 코어 상세](../1.%20NetworkLibrary/README.md)
+*   **[Server]** [로그인 서버 (인증 파이프라인 및 DB 연동)](../2.%20Servers/LoginServer/README.md)
+*   **[Server]** [채팅 서버 (공간 분할 동기화 및 다채널 전파)](../2.%20Servers/ChatServer/README.md)
+*   **[Server]** [게임 서버 (3x3 주변 섹터 기반 행동 전파)](../2.%20Servers/GameServer/README.md)
