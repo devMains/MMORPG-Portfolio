@@ -62,7 +62,12 @@ StackNode* node = pool.Alloc();
 pool.Free(node);
 ```
 
-## 6. 트레이드오프 (Trade-offs)
+## 6. 문제 해결 및 비교
+
+- 문제 상황 : 콘텐츠에서 스레드 생성 및 종료 시 TLS에 저장된 노드는 반환되지 않은 채 메모리 누수 발생
+  - 원인 : 스레드의 생성과 삭제가 빈번하게 일어날 수 있는 상황을 상정하지 않고 제작
+  - 해결 : thread_local의 NodeManager를 만들어서 TLS에 존재하는 노드 반환
+  - 개선 : threadCount 변수에 InterlockedIncrement로 stackIdx를 지정하는 방식에서 queue에 stackIdx를 넣는 방식으로 수정하여 인덱스 번호를 재활용할 수 있도록 함
 
 | 구분 | 설명 |
 | :--- | :--- |
