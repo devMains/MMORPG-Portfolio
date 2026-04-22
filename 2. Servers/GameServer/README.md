@@ -95,8 +95,7 @@ server->RegisterSessionToGroup(player->sessionId, GetGroupIndex(groupX, groupY))
   - 기존 스레드 소유 섹터에서 플레이어 제거
   - 새 스레드 소유 섹터로 캐릭터 마이그레이션
   - 인접 3×3 섹터의 다른 플레이어들에게 **Spawn/Despawn 이벤트** 전파
-- 스레드 간에는 직접 공유 메모리를 사용하지 않고,
-  - **Message Passing** 으로만 상태를 전달합니다.
+- 스레드 간에는 인접 섹터의 섹터 리스트만 읽기 전용으로 참조하여 메시지를 전파합니다.
 
 <img width="320" height="240" alt="Image" src="https://github.com/user-attachments/assets/2e5f734f-09ff-4692-9e8f-0c5fe1b897e4" />
 
