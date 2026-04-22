@@ -52,6 +52,8 @@
 - 경계를 넘어갈 때는 이전 대륙의 플레이어가 사라지고, 새 대륙의 플레이어가 소환됩니다. 이후 새 대륙에 속한 상태로 해당 스레드에서 계속 업데이트됩니다.
 - 동기화는 단일 스레드 내 컨테이너 기반으로 처리되므로, 락 없이도 일관성이 유지됩니다. 스레드 이동 자체는 네트워크 라이브러리의 그룹 기능을 통해 안전하게 이루어집니다.
 
+<img width="320" height="240" alt="Image" src="https://github.com/user-attachments/assets/a00b46c2-02f5-4d89-a10c-e60ecaa4de78" />
+
 - 문제점: 경계를 넘어가는 시점에 이동 요청 패킷이 동시에 도착하면 서버에서 이동 요청이 무시되는 현상
   - 원인: 스레드 이동 시, 이전 스레드에서 받은 메시지를 무시하도록 구현된 네트워크 라이브러리 로직. 각 스레드는 서로 다른 콘텐츠를 실행할 수 있기 때문에, 설계 당시에는 “이전 스레드의 메시지는 다른 콘텐츠에 속한다”고 보고 폐기하는 것이 안전하다고 판단했습니다.
   - 해결: 스레드 이동 시 **이전 스레드의 Pending 메시지를 먼저 처리한 뒤** 스레드 이동 로직을 실행하도록 구조를 변경하였습니다.
@@ -93,6 +95,8 @@ server->RegisterSessionToGroup(player->sessionId, GetGroupIndex(groupX, groupY))
   - 인접 3×3 섹터의 다른 플레이어들에게 **Spawn/Despawn 이벤트** 전파
 - 스레드 간에는 직접 공유 메모리를 사용하지 않고,
   - **Message Passing** 으로만 상태를 전달합니다.
+
+<img width="320" height="240" alt="Image" src="https://github.com/user-attachments/assets/2e5f734f-09ff-4692-9e8f-0c5fe1b897e4" />
 
 - 문제점: 스레드 간 이동 시 삭제 메시지를 전파하지 않아, 클라이언트에 캐릭터가 남아 있는 현상
   - 원인 1: 이동 시 “내가 사라져야 하는 섹터”를 계산하는 함수 호출에 잘못된 위치 인자를 전달
@@ -154,6 +158,8 @@ void SendAroundPlayerInfoAndMyInfo(PLAYER* player) {
   - 공격 스레드 → 대상 Owner Thread로 **Attack Request Job** 전달
   - Owner Thread에서 피격 판정, HP 감소, 상태 이상 처리
   - 결과를 다시 3×3 섹터 내 플레이어들에게 브로드캐스트
+ 
+<img width="320" height="240" alt="Image" src="https://github.com/user-attachments/assets/2196c399-fea0-4926-af0a-89bd9bc1e013" />
 
 - 의사 결정: 스레드 간 메시지 전달 방식
   - 그룹은 네트워크 라이브러리의 기능이며, 사용자 입장에서는 내부 구현을 알기 어렵습니다. 따라서 사용자가 직접 스레드 간 메시지 큐를 구현하기보다는, **라이브러리 차원에서 메시지 전달 기능을 제공하는 것**이 더 적절하다고 판단했습니다.
