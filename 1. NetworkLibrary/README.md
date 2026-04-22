@@ -64,7 +64,7 @@ graph TD
 네트워크 라이브러리는 **CNetServerGroup / ICNetServerGroup** 추상화를 통해, IOCP 기반 네트워크 코어 위에 **그룹 단위 실행 컨텍스트**를 제공합니다.
 
 ![그룹 플로우](../Images/GroupFlow.png)
-
+![그룹 플로우](../Images/GroupFlowSecond.png)
 *   **그룹의 개념:**
     *   인스턴스 던전, 레이드 파티, 필드 채널, PVP 전장 등 **논리적으로 독립된 게임 공간을 하나의 Group으로 표현**합니다.
     *   각 그룹은 고유한 `frameRate`를 가지며, 초당 N프레임으로 `Update()`와 그룹 메시지 처리 루프(`GroupProcess`)가 호출됩니다.
