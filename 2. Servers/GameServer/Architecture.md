@@ -223,3 +223,73 @@ sequenceDiagram
 | **Group 메시지 전달** | 그룹 간 메시지 전달 기능을 추가하여, 다른 그룹(스레드) 간 상태를 동기화할 수 있도록 했습니다. 이를 통해 공격/피격, 이동 등 스레드 간 상호작용을 안전하게 전달합니다. |
 
 ---
+
+## 5. 통신 프로토콜
+
+### 5.1 패킷 구조
+*   **공통 헤더 (3 Bytes):** 
+    *   `Code(1)` | `Length(1)` | `Packet Type(1)`
+
+### 5.2 주요 패킷 명세
+*   **[RES] CreateMyCharacter:** `Id(4)`, `See Direction(1)`, `Position(4) - x, y`, `HP(1)`
+*   **[RES] CreateMyCharacter:** `Id(4)`, `See Direction(1)`, `Position(4) - x, y`, `HP(1)`
+*   **[RES] DeleteCharacter:** `Id(4)`,
+*   **[REQ] MoveStart/MoveStop/Attack:** `See Direction(1)`, `Position(4) - x, y`,
+*   **[RES] MoveStart/MoveStop/Attack:** `Id(4)`, `See Direction(1)`, `Position(4) - x, y`,
+*   **[RES] Damage:** `AttackedId(4)`, `DamagedId(4)`, `DamagedHp(1)`
+
+### 5.3 주요 상호작용 시퀀스
+
+- 접속
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant O as OtherPlayer
+    participant S as Game Server (main)
+    participant G1 as Group1
+    participant G2 as Group2
+    
+    C->>S: TCP 연결 완료 (OnConnected)
+    Note over S: Player 객체 할당 및 초기화, 위치에 따른 그룹 판단
+    S->>G1: 그룹 추가 (OnGroupJoinned)
+    Note over G1: 그룹 별 playerMap에 Player 추가
+    G1->>C: 새로 접속한 플레이어의 생성 메시지, 주변 플레이어의 생성 메시지 전달
+    G1->>O: 주변 플레이어에게 새로 접속한 플레이어의 생성 메시지 전달
+
+    G1->>G1: 그룹에 포함된 플레이어의 메시지 처리, Update 로직 처리
+```
+
+- 그룹 이동
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant O as OtherPlayer
+    participant S as Game Server (main)
+    participant G1 as Group1
+    participant G2 as Group2
+    
+    G1->>G1: Update 내부 그룹 이동 감지
+    G1->>C: 주위 모든 플레이어 삭제
+    G1->>O: 그룹 벗어난 플레이어 삭제
+    G1->>G2: RegisterSessionToGroup 함수로 플레이어 이동
+    G2->>C: 주위 모든 플레이어 생성
+    G2->>O: 새로 들어온 플레이어 생성
+    G2->>G2: 그룹에 포함된 플레이어의 메시지 처리, Update 로직 처리
+```
+
+- 접속 종료
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant O as OtherPlayer
+    participant S as Game Server (main)
+    participant G1 as Group1
+    participant G2 as Group2
+    
+    C->>S: TCP 연결 끊김
+    Note over S: OnDisconnect 호출
+    S->>G1: OnQuitted 메시지 전달
+    Note over G1: 섹터에서 제거, 플레이어 객체 풀 반환, 그룹 내 playerMap에서 삭제 (OnGroupQuitted)
+    G1->>O: 플레이어 제거 메시지 전파 (OnGroupQuitted)
+    G1->>G1: 그룹에 포함된 플레이어의 메시지 처리, Update 로직 처리
+```
