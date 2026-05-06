@@ -167,7 +167,14 @@ void CNetServerGroup::GroupProcess() {
 
 ## 7. 서버 데이터
 
-![서버 및 더미](./Images/DummyAndServers.png)
-![로그인 서버 리소스 추이](./Images/Graph/LoginServer.png)
-![채팅 서버 리소스 추이](./Images/Graph/ChatServer.png)
-![게임 서버 리소스 추이](./Images/Graph/GameServer.png)
+### 서버 및 더미 콘솔
+![서버 및 더미](../Images/DummyAndServers.png)
+
+### 로그인 서버 리소스
+![로그인 서버 리소스 추이](../Images/Graph/LoginServer.png)
+
+### 채팅 서버 리소스
+![채팅 서버 리소스 추이](../Images/Graph/ChatServer.png)
+
+### 게임 서버 리소스
+![게임 서버 리소스 추이](../Images/Graph/GameServer.png)
