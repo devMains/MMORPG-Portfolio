@@ -91,11 +91,17 @@ struct Session {
     OVERLAPPEDEX sendOverlapped;
     RingBuffer _recvQ;                 // 수신 스트림 조립용 버퍼
     LockFreeQueue<Packet*> _sendQ;     // 논리적 송신 패킷 대기열
-    WSABUF _recvBuf;[1]
+    WSABUF _recvBuf[2];
     unsigned long long _id;            // 고유 식별자 (하위 16비트는 배열 인덱스)
     long _sendFlag;                    // 중복 WSASend 방지 플래그
     long _disconnected;                // 종료 상태 플래그
     long _ioCount;                     // 진행 중인 비동기 I/O 작업 수
+
+    long isGroupMoving = 0;            // 그룹 이동 플래그
+    ICNetServerGroup* group = 0;       // 그룹 객체 
+	 long groupVersion = 0;             // 그룹 버전
+	 SRWLOCK groupLock;                 // 그룹 관련 로직 실행 시 동기화 객체
+	 CQueueLockFree<CSerializedBuffer*>pendingQ; // 그룹 이동 요청 이후 메시지 저장
 };
 ```
 
@@ -258,5 +264,6 @@ unsigned __stdcall CNetServerGroup::WorkerThread(void* param) {
 *   **Lock-Free 세션 관리:** 세션 ID의 하위 48비트는 시퀀스로, 상위 16비트는 배열 인덱스로 활용하여 **탐색 비용을 제거**했습니다. 상태 관리는 `Interlocked` 함수 기반의 원자적 연산으로 대체했습니다.
 *   **효과:** 세션 삭제 시 발생하던 동시성 충돌 문제가 완전히 해결되었으며, 할당 오버헤드도 사라졌습니다. (단, 현재 설계상 송수신 I/O가 각각 1회로 제한되어 있어 실제 락 경합이 적으므로, 구현 난이도 대비 성능 향상보다는 **동시성 제어의 통제**에 더 큰 의의를 둡니다.)
 
-### 15.3 향후 개선 계획 (v3.0)
-*(계획 중인 개선 사항 추가 예정)*
+### 15.3 그룹 설계 (v3.0)
+*   **그룹 컨텍스트 추가:** 인스턴스 던전, PVP와 같은 분리된 컨텐츠를 가동할 수 있는 그룹 컨텍스트를 추가하였습니다.
+*   **동일 컨텐츠 이용 고려:** 그룹 이동 요청 이후 발생한 메시지의 경우 다음 그룹의 입장 시 처리할 수 있도록 하였습니다. 동일 컨텐츠의 경우 이전 그룹의 메시지가 필요한 경우가 존재하였습니다.
