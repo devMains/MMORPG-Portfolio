@@ -99,9 +99,9 @@ struct Session {
 
     long isGroupMoving = 0;            // 그룹 이동 플래그
     ICNetServerGroup* group = 0;       // 그룹 객체 
-	 long groupVersion = 0;             // 그룹 버전
-	 SRWLOCK groupLock;                 // 그룹 관련 로직 실행 시 동기화 객체
-	 CQueueLockFree<CSerializedBuffer*>pendingQ; // 그룹 이동 요청 이후 메시지 저장
+	long groupVersion = 0;             // 그룹 버전
+	SRWLOCK groupLock;                 // 그룹 관련 로직 실행 시 동기화 객체
+	CQueueLockFree<CSerializedBuffer*>pendingQ; // 그룹 이동 요청 이후 메시지 저장
 };
 ```
 
